@@ -37,22 +37,7 @@
   "C_Cpp_Runner.warningsAsError": false,
   "C_Cpp_Runner.compilerArgs": [],
   "C_Cpp_Runner.linkerArgs": [],
-  "C_Cpp_Runner.includePaths": [
-    "d:\\Programs\\embedded\\TDPS\\Core\\Inc",
-    "d:\\Programs\\embedded\\TDPS\\Drivers\\STM32H7xx_HAL_Driver\\Inc",
-    "d:\\Programs\\embedded\\TDPS\\Drivers\\STM32H7xx_HAL_Driver\\Inc\\Legacy",
-    "d:\\Programs\\embedded\\TDPS\\Drivers\\CMSIS\\Device\\ST\\STM32H7xx\\Include",
-    "d:\\Programs\\embedded\\TDPS\\Drivers\\CMSIS\\Include",
-    "d:\\Programs\\embedded\\TDPS\\Code\\Inc",
-    "D:\\Apps\\keil\\ARM\\ARMCLANG\\include",
-    "D:\\Apps\\keil\\ARM\\ARMCLANG\\include\\arm_linux",
-    "D:\\Apps\\keil\\ARM\\ARMCLANG\\include\\arm_linux_compat",
-    "D:\\Apps\\keil\\ARM\\ARMCLANG\\include\\libcxx",
-    "d:\\Programs\\embedded\\TDPS\\MDK-ARM",
-    "d:\\Programs\\embedded\\TDPS\\Core\\Src",
-    "d:\\Programs\\embedded\\TDPS\\Drivers\\STM32H7xx_HAL_Driver\\Src",
-    "d:\\Programs\\embedded\\TDPS\\Code\\Src"
-  ],
+  "C_Cpp_Runner.includePaths": [],
   "C_Cpp_Runner.includeSearch": [
     "*",
     "**/*"
@@ -71,5 +56,4 @@
   "C_Cpp_Runner.showCompilationTime": false,
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false
-  
 }
