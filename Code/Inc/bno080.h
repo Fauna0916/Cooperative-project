@@ -2,7 +2,6 @@
 #define __BNO080_H__
 
 #include "i2c.h"
-#include "utils.h"
 
 #define BNO080_I2C hi2c2
 #define BNO080_I2C_ADDR 0x96    // 0x4B << 1

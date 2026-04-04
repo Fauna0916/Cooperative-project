@@ -19,8 +19,7 @@ git checkout -b feature/功能名
 .c 放在./Code/Src
 
 ## 修改代码后
-git add ./Code/Inc/文件名.h
-git add ./Code/Src/文件名.c
+git add .
 git commit -m "注释"
 
 # 将你的分支推送到远程
