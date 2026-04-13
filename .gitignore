@@ -13,3 +13,4 @@
 *.lock
 .MDK-ARM/TDPS/
 ./Drivers
+.MDK-ARM/RTE
