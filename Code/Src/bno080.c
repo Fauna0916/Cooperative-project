@@ -1,6 +1,8 @@
 #include "bno080.h"
 #include <math.h>
 
+#define BNO080_I2C hi2c2
+
 #define QUATERNION_SCALE 0.00006103515625f
 
 ALIGN_32BYTES(uint8_t bno_rx_buffer[BNO_READ_SIZE]) __attribute__((section(".ARM.__at_0x24000000")));
