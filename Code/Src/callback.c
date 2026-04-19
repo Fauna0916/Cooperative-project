@@ -1,12 +1,18 @@
 #include "callback.h"
-#include "bno080.h"
-#include "usart.h"
-#include "utils.h"
+#include "encoder.h"
 
 extern BNO080_State_t bno_state;
 extern uint8_t bno_rx_buffer[BNO_READ_SIZE];
 
 static uint8_t huart2_flag = False;
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim == &htim7) // 0.01
+    {
+        Encoder_Update();
+    }
+}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {

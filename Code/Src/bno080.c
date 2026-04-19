@@ -1,7 +1,7 @@
 #include "bno080.h"
 #include <math.h>
 
-#define BNO080_I2C hi2c2
+
 
 #define QUATERNION_SCALE 0.00006103515625f
 
