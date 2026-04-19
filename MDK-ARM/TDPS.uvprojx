@@ -882,11 +882,6 @@
               <FilePath>..\Code\Src\callback.c</FilePath>
             </File>
             <File>
-              <FileName>utils.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\Code\Inc\utils.h</FilePath>
-            </File>
-            <File>
               <FileName>utils.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Code\Src\utils.c</FilePath>
@@ -897,9 +892,34 @@
               <FilePath>..\Code\Src\motor.c</FilePath>
             </File>
             <File>
-              <FileName>motor.h</FileName>
+              <FileName>encoder.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Code\Src\encoder.c</FilePath>
+            </File>
+            <File>
+              <FileName>encoder.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\Code\Inc\motor.h</FilePath>
+              <FilePath>..\Code\Inc\encoder.h</FilePath>
+            </File>
+            <File>
+              <FileName>pid.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Code\Src\pid.c</FilePath>
+            </File>
+            <File>
+              <FileName>pid.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Code\Inc\pid.h</FilePath>
+            </File>
+            <File>
+              <FileName>control.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Code\Src\control.c</FilePath>
+            </File>
+            <File>
+              <FileName>control.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Code\Inc\control.h</FilePath>
             </File>
           </Files>
         </Group>
