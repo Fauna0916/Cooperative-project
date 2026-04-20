@@ -5,6 +5,7 @@
 #include "bno080.h"
 #include "encoder.h"
 #include "usart.h"
+#include "odometry.h"
 
 enum
 {

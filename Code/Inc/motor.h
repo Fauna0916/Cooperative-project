@@ -3,7 +3,7 @@
 
 #include "tim.h"
 
-#define MOTOR_PWM_MAX 9000
+#define MOTOR_PWM_MAX 10000
 
 typedef enum
 {

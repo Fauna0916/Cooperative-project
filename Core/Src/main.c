@@ -33,6 +33,7 @@
 #include "bno080.h"
 #include "motor.h"
 #include "encoder.h"
+#include "odometry.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -64,22 +65,6 @@ static void MPU_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void Motor_SetSpeedWithStart(Motor_ID_t motor, int32_t target_speed, int32_t start_duty, uint16_t hold_time_ms)
-{
-  if (target_speed == 0)
-  {
-    Motor_SetSingleSpeed(motor, 0);
-    return;
-  }
-
-  // 1. 先用启动占空比驱动电�??
-  int32_t start_speed = (target_speed > 0) ? start_duty : -start_duty;
-  Motor_SetSingleSpeed(motor, start_speed);
-  HAL_Delay(hold_time_ms);
-
-  // 2. 再切换到目标速度
-  Motor_SetSingleSpeed(motor, target_speed);
-}
 
 /* USER CODE END 0 */
 
@@ -132,6 +117,7 @@ int main(void)
   HAL_UART_Receive_IT(&huart2, msg, 20);
   HAL_TIM_Base_Start_IT(&htim7);
   Encoder_Init();
+  Odometry_Init(0,0,0);
   Motor_Init();
   /* USER CODE END 2 */
 
