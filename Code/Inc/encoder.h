@@ -6,7 +6,7 @@
 // 轮子转动一圈的总脉冲数 (13线 * 20减速比 * 4倍频)
 #define ENCODER_PPR 1040.0f
 
-// 测速周期，单位秒 (例如定时器每 10ms 调用一次 Update，这里就是 0.01)
+// 测速周期，单位秒
 #define SPEED_CALC_PERIOD 0.01f
 
 typedef struct
@@ -16,10 +16,9 @@ typedef struct
 } Motor_Data_t;
 
 void Encoder_Init(void);
-void Encoder_Update(void); 
+void Encoder_Update(void);
 
-// Motor_Data_t *Encoder_GetLeftData(void);
-// Motor_Data_t *Encoder_GetRightData(void);
-
+Motor_Data_t *Encoder_GetLeftData(void);
+Motor_Data_t *Encoder_GetRightData(void);
 
 #endif

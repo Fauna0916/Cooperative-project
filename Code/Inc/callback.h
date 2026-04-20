@@ -3,6 +3,7 @@
 
 #include "tim.h"
 #include "bno080.h"
+#include "encoder.h"
 #include "usart.h"
 
 enum

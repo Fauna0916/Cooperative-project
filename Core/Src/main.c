@@ -72,7 +72,7 @@ void Motor_SetSpeedWithStart(Motor_ID_t motor, int32_t target_speed, int32_t sta
     return;
   }
 
-  // 1. 先用启动占空比驱动电�?
+  // 1. 先用启动占空比驱动电�??
   int32_t start_speed = (target_speed > 0) ? start_duty : -start_duty;
   Motor_SetSingleSpeed(motor, start_speed);
   HAL_Delay(hold_time_ms);
@@ -126,11 +126,12 @@ int main(void)
   /* USER CODE BEGIN 2 */
  // HAL_Delay(2000); // wait for peripherals to stabilize
   BNO080_Init();
-  Encoder_Init();
+  
   BNO080_Data_t* attitude;
   uint8_t msg[80];
   HAL_UART_Receive_IT(&huart2, msg, 20);
-
+  HAL_TIM_Base_Start_IT(&htim7);
+  Encoder_Init();
   Motor_Init();
   /* USER CODE END 2 */
 
@@ -140,14 +141,14 @@ int main(void)
   // Motor_SetSpeedWithStart(MOTOR_RIGHT, 5000, 8000, 300);
   /* USER CODE BEGIN 2 */
 
-  
+  Motor_SetSpeed(6000, 6000);
 
   /* USER CODE END 2 */
   while (1)
   {
-
-    Motor_SetSpeed(6000, 6000);
-    HAL_Delay(3000);
+    debug_info();
+    
+    //HAL_Delay(3000);
   
 
     // if (BNO080_READY_TO_READ == BNO080_Update())

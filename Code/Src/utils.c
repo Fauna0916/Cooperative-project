@@ -18,3 +18,12 @@ void I2C_VerifyCommunication(I2C_HandleTypeDef *device_I2C, uint16_t device_addr
         printf("Hardware Not Found!\r\n");
     }
 }
+
+void debug_info(void)
+{
+    Motor_Data_t *left = Encoder_GetLeftData();
+    Motor_Data_t *right = Encoder_GetRightData();
+    printf("letf:%d,%d\r\n", left->total_ticks, left->speed_rpm);
+    printf("right:%d,%d\r\n", right->total_ticks, right->speed_rpm);
+    HAL_Delay(100);
+}
