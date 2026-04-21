@@ -7,7 +7,7 @@
 
 PID_PARA *Tuning;
 
-PID_PARA Velocity_loop = {8, 2.3, 0};
+PID_PARA Velocity_loop = {0, 0, 0};
 PID_PARA Vision_loop = {0, 0, 0};
 
 static PID_TypeDef pid_left_motor;  // 左轮内环 (速度环)
