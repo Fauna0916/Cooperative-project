@@ -22,8 +22,8 @@ void I2C_VerifyCommunication(I2C_HandleTypeDef *device_I2C, uint16_t device_addr
 
 void debug_info(void)
 {
-    // printf("letf:%d,%d\r\n", Encoder_GetLeftData()->total_ticks, Encoder_GetLeftData()->speed_rpm);
-    // printf("right:%d,%d\r\n", Encoder_GetRightData()->total_ticks, Encoder_GetRightData()->speed_rpm);
+    printf("letf:%d,%d\r\n", Encoder_GetLeftData()->total_ticks, Encoder_GetLeftData()->speed_rpm);
+    printf("right:%d,%d\r\n", Encoder_GetRightData()->total_ticks, Encoder_GetRightData()->speed_rpm);
     // printf("x:%.1f,y:%.1f,theta:%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->theta);
 
     printf("v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);

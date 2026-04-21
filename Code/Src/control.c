@@ -5,9 +5,14 @@
 #include <math.h>
 #include "utils.h"
 
+
+#define MAX_LINEAR_VELOCITY 1.2f  
+#define MAX_ANGULAR_VELOCITY 6.0f
+
+
 PID_PARA *Tuning;
 
-PID_PARA Velocity_loop = {0, 0, 0};
+PID_PARA Velocity_loop = {8, 2.75, 0};
 PID_PARA Vision_loop = {0, 0, 0};
 
 static PID_TypeDef pid_left_motor;  // 左轮内环 (速度环)
@@ -21,7 +26,7 @@ static float current_line_error = 0.0f;
 
 void Control_Init(void)
 {
-    Tuning = &Vision_loop;
+    Tuning = &Velocity_loop;
 
     Motor_Init();
     Encoder_Init();
@@ -59,9 +64,9 @@ static void Kinematics_VelocityToRPM(float linear_v, float angular_w, float *rpm
 
 void Control_Update(void)
 {
-    pid_line_follow.Kp = pid_line_follow.Kp;
-    pid_line_follow.Ki = pid_line_follow.Ki;
-    pid_line_follow.Kd = pid_line_follow.Kd;
+    pid_left_motor.Kp = pid_right_motor.Kp = Velocity_loop.Kp;
+    pid_left_motor.Ki = pid_right_motor.Ki = Velocity_loop.Ki;
+    pid_left_motor.Kd = pid_right_motor.Kd = Velocity_loop.Kd;
 
     Encoder_Update();
     Odometry_Update();
@@ -95,7 +100,6 @@ void Control_Update(void)
     }
 
     // 3. 执行层：内环电机速度闭环
-    // 读取真实转速
     float measured_rpm_l = Encoder_GetLeftData()->speed_rpm;
     float measured_rpm_r = Encoder_GetRightData()->speed_rpm;
 
@@ -113,6 +117,17 @@ void Control_Stop(void)
 void Control_SetVelocity(float linear_vel, float angular_vel)
 {
     current_mode = CTRL_SPEED_MODE;
+
+    if (linear_vel > MAX_LINEAR_VELOCITY)
+        linear_vel = MAX_LINEAR_VELOCITY;
+    if (linear_vel < -MAX_LINEAR_VELOCITY)
+        linear_vel = -MAX_LINEAR_VELOCITY;
+
+    if (angular_vel > MAX_ANGULAR_VELOCITY)
+        angular_vel = MAX_ANGULAR_VELOCITY;
+    if (angular_vel < -MAX_ANGULAR_VELOCITY)
+        angular_vel = -MAX_ANGULAR_VELOCITY;
+
     target_linear_v = linear_vel;
     target_angular_w = angular_vel;
 }

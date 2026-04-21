@@ -130,11 +130,11 @@ int main(void)
   {
     if (HAL_GetTick() % 6000 < 3000)
     {
-      Control_SetVelocity(0.0f, 5.0f); 
+      Control_SetVelocity(0.1f, 0.0f); 
     }
     else
     {
-      Control_SetVelocity(0.0f, -5.0f); 
+      Control_SetVelocity(0.3f, 0.0f); 
     }
     debug_info();
     
