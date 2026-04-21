@@ -5,8 +5,9 @@ static Odometry_State_t odo_state = {0};
 
 static int32_t last_total_ticks_l = 0;
 static int32_t last_total_ticks_r = 0;
-
 static float meters_per_tick = 0.0f;
+
+static float yaw_offset = 0.0f;
 
 void Odometry_Init(float start_x, float start_y, float start_theta)
 {
@@ -23,6 +24,8 @@ void Odometry_Init(float start_x, float start_y, float start_theta)
 
     // 计算每个脉冲代表的物理距离 (米/脉冲) = 轮子周长 / 单圈脉冲数
     meters_per_tick = (PI * WHEEL_DIAMETER) / ENCODER_PPR;
+
+    yaw_offset = BNO080_GetLatestData()->yaw - start_theta;
 }
 
 void Odometry_Update(void)
@@ -42,29 +45,23 @@ void Odometry_Update(void)
 
     // 4. 计算中心点移动距离和车体旋转角度增量
     float delta_dist = (dist_r + dist_l) / 2.0f;         // 小车中心行走的距离
-    float delta_theta = (dist_r - dist_l) / TRACK_WIDTH; // 小车旋转的角度 (弧度)
+    float current_yaw = BNO080_GetLatestData()->yaw - yaw_offset;
 
-    // 5. 更新瞬时速度 (m/s 和 rad/s)
+    // 角度归一化到 -PI ~ PI
+    if (current_yaw > PI)
+        current_yaw -= 2.0f * PI;
+    if (current_yaw < -PI)
+        current_yaw += 2.0f * PI;
+
+
+    // 更新瞬时速度 (m/s 和 rad/s)
     odo_state.linear_vel = delta_dist / ODO_UPDATE_PERIOD;
-    odo_state.angular_vel = delta_theta / ODO_UPDATE_PERIOD;
+    odo_state.angular_vel = (current_yaw - odo_state.theta) / ODO_UPDATE_PERIOD;
 
-    // 6. 坐标系转换：计算世界坐标系下的位置增量 (使用二阶近似提高弯道精度)
-    // 相比使用旧角度，使用 (旧角度 + 旋转量的一半) 更加接近圆弧运动的真实轨迹
-    float average_theta = odo_state.theta + (delta_theta / 2.0f);
 
-    odo_state.x += delta_dist * cosf(average_theta);
-    odo_state.y += delta_dist * sinf(average_theta);
-    odo_state.theta += delta_theta;
-
-    // 7. 角度归一化，将 theta 限制在 -PI 到 PI 之间
-    if (odo_state.theta > PI)
-    {
-        odo_state.theta -= 2.0f * PI;
-    }
-    else if (odo_state.theta < -PI)
-    {
-        odo_state.theta += 2.0f * PI;
-    }
+    odo_state.theta = current_yaw;
+    odo_state.x += delta_dist * cosf(odo_state.theta);
+    odo_state.y += delta_dist * sinf(odo_state.theta);
 }
 
 Odometry_State_t *Odometry_GetState(void)

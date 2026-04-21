@@ -5,24 +5,36 @@
 #include <math.h>
 #include "utils.h"
 
-
-#define MAX_LINEAR_VELOCITY 1.2f  
+#define MAX_LINEAR_VELOCITY 1.2f
 #define MAX_ANGULAR_VELOCITY 6.0f
-
 
 PID_PARA *Tuning;
 
 PID_PARA Velocity_loop = {8, 2.75, 0};
 PID_PARA Vision_loop = {0, 0, 0};
+PID_PARA IMU_loop = {0, 0, 0};
 
 static PID_TypeDef pid_left_motor;  // 左轮内环 (速度环)
 static PID_TypeDef pid_right_motor; // 右轮内环 (速度环)
 static PID_TypeDef pid_line_follow; // 视觉外环 (位置/角度环)
+static PID_TypeDef pid_imu_heading;
+static float target_imu_yaw = 0.0f;
 
 static Control_Mode_t current_mode = CTRL_STOP;
 static float target_linear_v = 0.0f;
 static float target_angular_w = 0.0f;
 static float current_line_error = 0.0f;
+
+
+static float WrapAngleError(float target, float current)
+{
+    float error = target - current;
+    while (error > PI)
+        error -= 2.0f * PI;
+    while (error < -PI)
+        error += 2.0f * PI;
+    return error;
+}
 
 void Control_Init(void)
 {
@@ -34,8 +46,8 @@ void Control_Init(void)
 
     PID_Init(&pid_left_motor, Velocity_loop.Kp, Velocity_loop.Ki, Velocity_loop.Kd, 9500.0f, 3000.0f);
     PID_Init(&pid_right_motor, Velocity_loop.Kp, Velocity_loop.Ki, Velocity_loop.Kd, 9500.0f, 3000.0f);
+    PID_Init(&pid_imu_heading, IMU_loop.Kp, IMU_loop.Ki, IMU_loop.Kd, 3.0f, 1.0f);
 
-    // 4. 初始化视觉巡线 PID
     // 输入：像素偏移，输出：角速度(rad/s)
     // 经验值：Kp=0.02, Ki=0.0, Kd=0.05
     PID_Init(&pid_line_follow, Vision_loop.Kp, Vision_loop.Ki, Vision_loop.Kd, 4.0f, 1.0f);
@@ -68,6 +80,10 @@ void Control_Update(void)
     pid_left_motor.Ki = pid_right_motor.Ki = Velocity_loop.Ki;
     pid_left_motor.Kd = pid_right_motor.Kd = Velocity_loop.Kd;
 
+    pid_imu_heading.Kp = IMU_loop.Kp;
+    pid_imu_heading.Ki = IMU_loop.Ki;
+    pid_imu_heading.Kd = IMU_loop.Kd;
+
     Encoder_Update();
     Odometry_Update();
 
@@ -91,6 +107,20 @@ void Control_Update(void)
         target_angular_w = PID_Compute(&pid_line_follow, 0.0f, current_line_error);
 
         // 逆解算转换为电机 RPM
+        Kinematics_VelocityToRPM(target_linear_v, target_angular_w, &target_rpm_l, &target_rpm_r);
+    }
+    else if (current_mode == CTRL_IMU_HEADING)
+    {
+        float current_yaw = Odometry_GetState()->theta;
+
+        // 计算经过越界处理的最短角度误差
+        float angle_err = WrapAngleError(target_imu_yaw, current_yaw);
+
+        // 把误差直接喂给 PID，不使用它的 target-measured 减法计算
+        // 技巧：重置 target 为 0，把算好的 -angle_err 当作 measured
+        target_angular_w = PID_Compute(&pid_imu_heading, 0.0f, -angle_err);
+
+        // 逆解算给电机内环
         Kinematics_VelocityToRPM(target_linear_v, target_angular_w, &target_rpm_l, &target_rpm_r);
     }
     else if (current_mode == CTRL_SPEED_MODE)
@@ -138,3 +168,17 @@ void Control_SetLineError(float base_linear_vel, float openmv_error)
     target_linear_v = base_linear_vel;
     current_line_error = openmv_error;
 }
+
+void Control_SetIMUHeading(float linear_vel, float target_yaw)
+{
+    current_mode = CTRL_IMU_HEADING;
+    target_linear_v = linear_vel;
+
+    while (target_yaw > PI)
+        target_yaw -= 2.0f * PI;
+    while (target_yaw < -PI)
+        target_yaw += 2.0f * PI;
+
+    target_imu_yaw = target_yaw;
+}
+

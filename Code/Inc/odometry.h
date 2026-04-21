@@ -2,6 +2,7 @@
 #define __ODOMETRY_H__
 
 #include "encoder.h"
+#include "bno080.h"
 #include <math.h>
 
 

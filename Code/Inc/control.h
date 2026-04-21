@@ -5,13 +5,13 @@
 
 typedef enum
 {
-    CTRL_STOP = 0,      // 停车模式 (关闭电机，清空PID)
-    CTRL_SPEED_MODE,    // 纯速度控制模式 (指定线速度和角速度，用于盲走/遥控)
-    CTRL_LINE_FOLLOWING // 视觉巡线模式 (使用 OpenMV 反馈闭环)
+    CTRL_STOP = 0,       
+    CTRL_SPEED_MODE,    
+    CTRL_LINE_FOLLOWING, 
+    CTRL_IMU_HEADING,
 } Control_Mode_t;
 
 extern PID_PARA *Tuning;
-
 
 void Control_Init(void);
 void Control_Update(void);
@@ -30,5 +30,6 @@ void Control_SetVelocity(float linear_vel, float angular_vel);
  * @param  openmv_error: OpenMV传回的黑线偏移量 (例如 -100~100，0为正中心)
  */
 void Control_SetLineError(float base_linear_vel, float openmv_error);
+void Control_SetIMUHeading(float linear_vel, float target_yaw);
 
 #endif
