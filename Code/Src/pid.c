@@ -21,11 +21,14 @@ float PID_Compute(PID_TypeDef *pid, float target, float measured)
     // 2. 计算当前误差
     pid->err = pid->target - pid->measured;
 
+    // 死区处理  ---
+    if (fabsf(pid->err) < 0.2f)
+        pid->err = 0;
+
     // 3. 积分累计
     pid->integral += pid->err;
 
     // --- 积分抗饱和保护 (Anti-Windup) ---
-    // 如果不限制积分，放开小车后它会疯狂冲刺很久才能消除积分。
     if (pid->integral > pid->max_integral)
     {
         pid->integral = pid->max_integral;

@@ -32,8 +32,7 @@
 #include "utils.h"
 #include "bno080.h"
 #include "motor.h"
-#include "encoder.h"
-#include "odometry.h"
+#include "control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -110,28 +109,33 @@ int main(void)
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
  // HAL_Delay(2000); // wait for peripherals to stabilize
-  BNO080_Init();
   
   BNO080_Data_t* attitude;
-  uint8_t msg[80];
-  HAL_UART_Receive_IT(&huart2, msg, 20);
+
   HAL_TIM_Base_Start_IT(&htim7);
-  Encoder_Init();
-  Odometry_Init(0,0,0);
-  Motor_Init();
+
+  Tuning_Init();
+  BNO080_Init();
+  Control_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  // Motor_SetSpeedWithStart(MOTOR_LEFT, 5000, 8000, 300);
-  // Motor_SetSpeedWithStart(MOTOR_RIGHT, 5000, 8000, 300);
-  /* USER CODE BEGIN 2 */
 
-  Motor_SetSpeed(6000, 6000);
+  /* USER CODE BEGIN 2 */
+  //Motor_SetSpeed(6000,6000);
 
   /* USER CODE END 2 */
   while (1)
   {
+    if (HAL_GetTick() % 6000 < 3000)
+    {
+      Control_SetVelocity(0.0f, 5.0f); 
+    }
+    else
+    {
+      Control_SetVelocity(0.0f, -5.0f); 
+    }
     debug_info();
     
     //HAL_Delay(3000);

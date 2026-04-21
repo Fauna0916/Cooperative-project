@@ -1,17 +1,15 @@
 #include "callback.h"
 
-
 extern BNO080_State_t bno_state;
 extern uint8_t bno_rx_buffer[BNO_READ_SIZE];
 
-static uint8_t huart2_flag = False;
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    if (htim == &htim7) // 0.01
+    if (htim == &htim7) // 0.01s
     {
-        Encoder_Update();
-        Odometry_Update();
+        //Encoder_Update();
+        Control_Update();
     }
 }
 
@@ -19,21 +17,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart == &huart2)
     {
-        huart2_flag = True;
+       
     }
 }
 
-void UART2_handle(void)
-{
-    static uint8_t rx_buf[20];
-    if (huart2_flag)
-    {
-        huart2_flag = False;
-        HAL_UART_Receive_IT(&huart2, rx_buf, 5);
-        HAL_UART_Transmit_IT(&huart2, rx_buf, 5);
-    }
-    return;
-}
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {

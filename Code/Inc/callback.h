@@ -6,6 +6,8 @@
 #include "encoder.h"
 #include "usart.h"
 #include "odometry.h"
+#include "control.h"
+#include "utils.h"
 
 enum
 {
@@ -13,6 +15,5 @@ enum
     True = 1,
 };
 
-void UART2_handle(void);
 
 #endif

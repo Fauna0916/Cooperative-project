@@ -5,6 +5,13 @@
 
 typedef struct
 {
+    float Kp;
+    float Ki;
+    float Kd;
+} PID_PARA;
+
+typedef struct
+{
     // 1. PID parameters
     float Kp;
     float Ki;

@@ -6,10 +6,10 @@
 
 
 // 轮子直径，单位：米
-#define WHEEL_DIAMETER 0.065f
+#define WHEEL_DIAMETER 0.045f
 
-// TODO:两轮中心间距 (轮距)，单位：米
-#define TRACK_WIDTH 0.150f
+// 两轮中心间距 (轮距)，单位：米
+#define TRACK_WIDTH 0.148f
 
 // 13 * 20 * 4 = 1040
 #define ENCODER_PPR 1040.0f
