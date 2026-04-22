@@ -32,38 +32,39 @@ void Odometry_Update(void)
 {
     int32_t current_ticks_l = Encoder_GetLeftData()->total_ticks;
     int32_t current_ticks_r = Encoder_GetRightData()->total_ticks;
-
     int32_t delta_ticks_l = current_ticks_l - last_total_ticks_l;
     int32_t delta_ticks_r = current_ticks_r - last_total_ticks_r;
-
     last_total_ticks_l = current_ticks_l;
     last_total_ticks_r = current_ticks_r;
 
-    // 3. 将脉冲增量转换为物理距离增量 (米)
     float dist_l = delta_ticks_l * meters_per_tick;
     float dist_r = delta_ticks_r * meters_per_tick;
+    float delta_dist = (dist_r + dist_l) / 2.0f;
 
-    // 4. 计算中心点移动距离和车体旋转角度增量
-    float delta_dist = (dist_r + dist_l) / 2.0f;         // 小车中心行走的距离
-    float current_yaw = BNO080_GetLatestData()->yaw - yaw_offset;
+    float raw_yaw = BNO080_GetLatestData()->yaw - yaw_offset;
 
-    // 角度归一化到 -PI ~ PI
-    if (current_yaw > PI)
-        current_yaw -= 2.0f * PI;
-    if (current_yaw < -PI)
-        current_yaw += 2.0f * PI;
+    while (raw_yaw > PI)
+        raw_yaw -= 2.0f * PI;
+    while (raw_yaw < -PI)
+        raw_yaw += 2.0f * PI;
+    float current_yaw = raw_yaw;
 
+    float delta_theta = current_yaw - odo_state.theta;
+    if (delta_theta > PI)
+        delta_theta -= 2.0f * PI;
+    else if (delta_theta < -PI)
+        delta_theta += 2.0f * PI;
 
-    // 更新瞬时速度 (m/s 和 rad/s)
     odo_state.linear_vel = delta_dist / ODO_UPDATE_PERIOD;
-    odo_state.angular_vel = (current_yaw - odo_state.theta) / ODO_UPDATE_PERIOD;
+    odo_state.angular_vel = delta_theta / ODO_UPDATE_PERIOD;
 
+
+    float avg_theta = odo_state.theta + (delta_theta / 2.0f);
+    odo_state.x += delta_dist * cosf(avg_theta);
+    odo_state.y += delta_dist * sinf(avg_theta);
 
     odo_state.theta = current_yaw;
-    odo_state.x += delta_dist * cosf(odo_state.theta);
-    odo_state.y += delta_dist * sinf(odo_state.theta);
 }
-
 Odometry_State_t *Odometry_GetState(void)
 {
     return &odo_state;

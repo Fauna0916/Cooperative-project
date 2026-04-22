@@ -127,7 +127,7 @@ int main(void)
   /* USER CODE END 2 */
   while (1)
   {
-    //Control_SetIMUHeading(0.0f, 0.0f);
+    // Control_SetIMUHeading(0.0f, 0.0f);
     // if (HAL_GetTick() % 6000 < 2000)
     // {
     //   Control_SetVelocity(0.1f, 0.0f); 
@@ -140,7 +140,7 @@ int main(void)
     // {
     //   Control_SetVelocity(0.0f, 0.0f);
     // }
-    // debug_info();
+    debug_info();
     
     //HAL_Delay(3000);
   
