@@ -1,6 +1,8 @@
 #include "bno080.h"
 #include <math.h>
 
+
+
 #define QUATERNION_SCALE 0.00006103515625f
 
 ALIGN_32BYTES(uint8_t bno_rx_buffer[BNO_READ_SIZE]) __attribute__((section(".ARM.__at_0x24000000")));
@@ -67,6 +69,8 @@ BNO080_State_t BNO080_Update(void)
 
     if (bno_state == BNO080_DATA_READY)
     {
+        SCB_InvalidateDCache_by_Addr((uint32_t *)bno_rx_buffer, BNO_READ_SIZE);
+
         uint8_t channel = bno_rx_buffer[2];
 
         if (channel == 3 && bno_rx_buffer[9] == SENSOR_REPORTID_GAME_ROTATION_VECTOR)
@@ -96,7 +100,7 @@ BNO080_State_t BNO080_Update(void)
         }
 
         bno_data.last_update_tick = HAL_GetTick();
-        bno_state = BNO080_READY_TO_READ;          
+        bno_state = BNO080_IDLE;
         return BNO080_READY_TO_READ;
     }
 
@@ -116,9 +120,3 @@ BNO080_Data_t *BNO080_GetLatestData(void)
 {
     return &bno_data;
 }
-
-void BNO080_DataReaded(void)
-{
-    bno_state = BNO080_IDLE;
-}
-

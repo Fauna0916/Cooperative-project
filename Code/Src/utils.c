@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "string.h"
 
 int fputc(int ch, FILE *f)
 {
@@ -16,5 +17,69 @@ void I2C_VerifyCommunication(I2C_HandleTypeDef *device_I2C, uint16_t device_addr
     else
     {
         printf("Hardware Not Found!\r\n");
+    }
+}
+
+void debug_info(void)
+{
+    printf("letf:%d,%d\r\n", Encoder_GetLeftData()->total_ticks, Encoder_GetLeftData()->speed_rpm);
+    printf("right:%d,%d\r\n", Encoder_GetRightData()->total_ticks, Encoder_GetRightData()->speed_rpm);
+    // printf("x:%.1f,y:%.1f,theta:%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->theta);
+
+    printf("v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);
+
+    HAL_Delay(100);
+}
+
+#define RX_BUF_SIZE 100
+
+ALIGN_32BYTES(uint8_t rx_buffer[RX_BUF_SIZE]) __attribute__((section(".ARM.__at_0x24000080")));
+
+void Tuning_Init(void)
+{
+    HAL_UARTEx_ReceiveToIdle_DMA(&huart2, rx_buffer, RX_BUF_SIZE);
+    __HAL_DMA_DISABLE_IT(huart2.hdmarx, DMA_IT_HT);
+
+    printf("PID Debug Ready! Format: {kp,ki,kd@}\r\n");
+}
+
+void Parse_PID_DMA(uint8_t *data, uint16_t len)
+{
+    float p, i, d;
+    char *start_ptr, *end_ptr;
+
+    // 1. 查找帧头 '{' 和帧尾 '@'
+    start_ptr = strchr((char *)data, '{');
+    end_ptr = strchr((char *)data, '@');
+
+    if (start_ptr && end_ptr && (end_ptr > start_ptr))
+    {
+        // 2. 将 '@' 替换为结束符，方便 sscanf 解析
+        *end_ptr = '\0';
+
+        // 3. 解析中间的三个浮点数 (从 start_ptr + 1 开始)
+        if (sscanf(start_ptr + 1, "%f,%f,%f", &p, &i, &d) == 3)
+        {
+            Tuning->Kp = p;
+            Tuning->Ki = i;
+            Tuning->Kd = d;
+            printf("\r\nPID Updated: P=%.2f, I=%.2f, D=%.2f\r\n", Tuning->Kp, Tuning->Ki, Tuning->Kd);
+        }
+        else
+        {
+            printf("\r\nParse Error, Format: {kp,ki,kd@}\r\n");
+        }
+    }
+}
+
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+    if (huart->Instance == USART2)
+    {
+        Parse_PID_DMA(rx_buffer, Size);
+
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart2, rx_buffer, RX_BUF_SIZE);
+        __HAL_DMA_DISABLE_IT(huart2.hdmarx, DMA_IT_HT);
     }
 }
