@@ -65,15 +65,6 @@ void Error_Handler(void);
 #define ENCODER_RIGHT_A_GPIO_Port GPIOA
 #define ENCODER_RIGHT_B_Pin GPIO_PIN_7
 #define ENCODER_RIGHT_B_GPIO_Port GPIOA
-#define BNO_INT_Pin GPIO_PIN_14
-#define BNO_INT_GPIO_Port GPIOE
-#define BNO_INT_EXTI_IRQn EXTI15_10_IRQn
-#define BNO_RST_Pin GPIO_PIN_15
-#define BNO_RST_GPIO_Port GPIOE
-#define BNO_SCL_Pin GPIO_PIN_10
-#define BNO_SCL_GPIO_Port GPIOB
-#define BNO_SDA_Pin GPIO_PIN_11
-#define BNO_SDA_GPIO_Port GPIOB
 #define MOTOR_LEFT_IN1_Pin GPIO_PIN_12
 #define MOTOR_LEFT_IN1_GPIO_Port GPIOD
 #define MOTOR_LEFT_IN2_Pin GPIO_PIN_13
@@ -82,6 +73,14 @@ void Error_Handler(void);
 #define MOTOR_RIGHT_IN1_GPIO_Port GPIOD
 #define MOTOR_RIGHT_IN2_Pin GPIO_PIN_15
 #define MOTOR_RIGHT_IN2_GPIO_Port GPIOD
+#define BNO_RST_Pin GPIO_PIN_4
+#define BNO_RST_GPIO_Port GPIOB
+#define BNO_INT_Pin GPIO_PIN_5
+#define BNO_INT_GPIO_Port GPIOB
+#define BNO_SCL_Pin GPIO_PIN_6
+#define BNO_SCL_GPIO_Port GPIOB
+#define BNO_SDA_Pin GPIO_PIN_7
+#define BNO_SDA_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

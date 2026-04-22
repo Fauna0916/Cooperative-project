@@ -100,13 +100,12 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_I2C1_Init();
-  MX_I2C2_Init();
   MX_USART2_UART_Init();
   MX_TIM4_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_TIM7_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
  // HAL_Delay(2000); // wait for peripherals to stabilize
   
@@ -146,13 +145,13 @@ int main(void)
     //HAL_Delay(3000);
   
 
-    // if (BNO080_READY_TO_READ == BNO080_Update())
-    // {
-    //   uint8_t len = snprintf((char *)msg, sizeof(msg), "YPR: %.1f %.1f %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f,
-    //                          BNO080_GetLatestData()->pitch * 57.29578f,
-    //                          BNO080_GetLatestData()->roll * 57.29578f);
-    //   HAL_UART_Transmit_IT(&huart2, msg, len);
-    // }
+    if (BNO080_READY_TO_READ == BNO080_Update())
+    {
+      uint8_t len = snprintf((char *)msg, sizeof(msg), "YPR: %.1f %.1f %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f,
+                             BNO080_GetLatestData()->pitch * 57.29578f,
+                             BNO080_GetLatestData()->roll * 57.29578f);
+      HAL_UART_Transmit_IT(&huart2, msg, len);
+    }
 
 
 

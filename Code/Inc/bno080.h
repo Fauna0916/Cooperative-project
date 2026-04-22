@@ -3,7 +3,7 @@
 
 #include "i2c.h"
 
-#define BNO080_I2C hi2c2
+#define BNO080_I2C hi2c1
 #define BNO080_I2C_ADDR 0x96    // 0x4B << 1
 
 #define BNO_READ_SIZE 32
