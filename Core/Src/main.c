@@ -110,7 +110,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
  // HAL_Delay(2000); // wait for peripherals to stabilize
   
-  BNO080_Data_t* attitude;
+  uint8_t msg[80];
 
   HAL_TIM_Base_Start_IT(&htim7);
 
@@ -129,29 +129,32 @@ int main(void)
   while (1)
   {
     //Control_SetIMUHeading(0.0f, 0.0f);
-    if (HAL_GetTick() % 6000 < 3000)
-    {
-      Control_SetVelocity(0.1f, 0.0f); 
-    }
-    else
-    {
-      Control_SetVelocity(0.3f, 0.0f); 
-    }
-    debug_info();
+    // if (HAL_GetTick() % 6000 < 2000)
+    // {
+    //   Control_SetVelocity(0.1f, 0.0f); 
+    // }
+    // else if (HAL_GetTick() % 6000 < 4000)
+    // {
+    //   Control_SetVelocity(-0.1f, 0.0f); 
+    // }
+    // else
+    // {
+    //   Control_SetVelocity(0.0f, 0.0f);
+    // }
+    // debug_info();
     
     //HAL_Delay(3000);
   
 
     // if (BNO080_READY_TO_READ == BNO080_Update())
     // {
-    //   attitude = BNO080_GetLatestData();
-    //   BNO080_DataReaded();
+    //   uint8_t len = snprintf((char *)msg, sizeof(msg), "YPR: %.1f %.1f %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f,
+    //                          BNO080_GetLatestData()->pitch * 57.29578f,
+    //                          BNO080_GetLatestData()->roll * 57.29578f);
+    //   HAL_UART_Transmit_IT(&huart2, msg, len);
     // }
 
-    // uint8_t len = snprintf((char *)msg, sizeof(msg), "YPR: %.1f %.1f %.1f\r\n", attitude->yaw * 57.29578f,
-    //                        attitude->pitch * 57.29578f,
-    //                        attitude->roll * 57.29578f);
-    // HAL_UART_Transmit_IT(&huart2, msg, len);
+
 
     /* USER CODE END WHILE */
 

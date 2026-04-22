@@ -31,6 +31,5 @@ typedef struct
 void BNO080_Init(void);
 BNO080_State_t BNO080_Update(void);
 BNO080_Data_t *BNO080_GetLatestData(void);
-void BNO080_DataReaded(void);
 
 #endif
