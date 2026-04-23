@@ -33,6 +33,7 @@
 #include "bno080.h"
 #include "motor.h"
 #include "control.h"
+#include "openmv.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -107,54 +108,51 @@ int main(void)
   MX_TIM7_Init();
   MX_I2C1_Init();
   MX_SPI4_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  // HAL_Delay(2000); // wait for peripherals to stabilize
+  ///HAL_Delay(2000); // wait for peripherals to stabilize
 
   HAL_TIM_Base_Start_IT(&htim7);
 
   Tuning_Init();
   BNO080_Init();
   Control_Init();
+  OpenMV_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
   /* USER CODE BEGIN 2 */
-  // Motor_SetSpeed(6000,6000);
+  //HAL_Delay(2000);
 
   /* USER CODE END 2 */
   while (1)
   {
-    //Control_SetIMUHeading(0.0f, PI / 2);
+    if (OpenMV_GetData()->is_updated)
+    {
+      OpenMV_GetData()->is_updated = 0;
+      printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
+    }
 
-    // if (HAL_GetTick() % 6000 < 3000)
+    // Control_SetIMUHeading(0.0f, PI / 2);
+
+    // if (HAL_GetTick() % 9000 < 3000)
     // {
     //   // Control_SetVelocity(0.1f, 0.0f);
-    //   Control_SetIMUHeading(0.0f, PI / 4);
+    //   Control_SetIMUHeading(0.0f, PI / 2);
+    // }
+    // else if (HAL_GetTick() % 9000 < 6000)
+    // {
+    //   // Control_SetVelocity(-0.1f, 0.0f);
+    //   Control_SetIMUHeading(0.0f, 0);
     // }
     // else
     // {
-    //   // Control_SetVelocity(-0.1f, 0.0f);
-    //   Control_SetIMUHeading(0.0f, -PI / 4);
+    //   Control_SetIMUHeading(0.0f, -PI / 2);
     // }
 
-    if (HAL_GetTick() % 6000 < 2000)
-    {
-      Control_SetVelocity(0.2f, 0.0f);
-      //Control_SetIMUHeading(0.0f, PI / 4);
-    }
-    else if (HAL_GetTick() % 6000 < 4000)
-    {
-      Control_SetVelocity(-0.2f, 0.0f);
-      //Control_SetIMUHeading(0.0f, -PI / 4);
-    }
-    else
-    {
-      Control_SetVelocity(0.0f, 0.0f);
-      //Control_SetIMUHeading(0.0f, 0.1);
-    }
-    debug_info();
+    // debug_info();
 
     // HAL_Delay(3000);
 

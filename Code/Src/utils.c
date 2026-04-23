@@ -3,6 +3,10 @@
 
 uint8_t debug_flag = 0;
 
+#define RX_BUF_SIZE 100
+
+ALIGN_32BYTES(uint8_t rx_buffer[RX_BUF_SIZE]) __attribute__((section(".ARM.__at_0x24000040")));
+
 int fputc(int ch, FILE *f)
 {
     HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 10);
@@ -38,10 +42,6 @@ void debug_info(void)
     }
 
 }
-
-#define RX_BUF_SIZE 100
-
-ALIGN_32BYTES(uint8_t rx_buffer[RX_BUF_SIZE]) __attribute__((section(".ARM.__at_0x24000080")));
 
 void Tuning_Init(void)
 {
@@ -80,8 +80,7 @@ void Parse_PID_DMA(uint8_t *data, uint16_t len)
     }
 }
 
-
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+void TUNING_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
     if (huart->Instance == USART2)
     {

@@ -1,4 +1,5 @@
 #include "callback.h"
+#include "openmv.h"
 
 extern BNO080_State_t bno_state;
 extern uint8_t bno_rx_buffer[BNO_READ_SIZE];
@@ -20,6 +21,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         }
         
     }
+}
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+    OpenMV_RxEventCallback(huart, Size);
+    TUNING_RxEventCallback(huart, Size);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)

@@ -8,5 +8,6 @@
 void I2C_VerifyCommunication(I2C_HandleTypeDef *device_I2C, uint16_t device_address);
 void debug_info(void);
 void Tuning_Init(void);
+void TUNING_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size);
 
 #endif

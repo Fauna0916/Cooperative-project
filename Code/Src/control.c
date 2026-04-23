@@ -38,7 +38,7 @@ static float WrapAngleError(float target, float current)
 
 void Control_Init(void)
 {
-    Tuning = &Velocity_loop;
+    Tuning = &IMU_loop;
 
     Motor_Init();
     Encoder_Init();

@@ -543,18 +543,6 @@
                     <v6WtE>2</v6WtE>
                     <v6Rtti>2</v6Rtti>
                   </Cads>
-                  <Aads>
-                    <interw>2</interw>
-                    <Ropi>2</Ropi>
-                    <Rwpi>2</Rwpi>
-                    <thumb>2</thumb>
-                    <SplitLS>2</SplitLS>
-                    <SwStkChk>2</SwStkChk>
-                    <NoWarn>2</NoWarn>
-                    <uSurpInc>2</uSurpInc>
-                    <useXO>2</useXO>
-                    <ClangAsOpt>1</ClangAsOpt>
-                  </Aads>
                 </FileArmAds>
               </FileOption>
             </File>
@@ -794,18 +782,6 @@
                     <v6WtE>2</v6WtE>
                     <v6Rtti>2</v6Rtti>
                   </Cads>
-                  <Aads>
-                    <interw>2</interw>
-                    <Ropi>2</Ropi>
-                    <Rwpi>2</Rwpi>
-                    <thumb>2</thumb>
-                    <SplitLS>2</SplitLS>
-                    <SwStkChk>2</SwStkChk>
-                    <NoWarn>2</NoWarn>
-                    <uSurpInc>2</uSurpInc>
-                    <useXO>2</useXO>
-                    <ClangAsOpt>1</ClangAsOpt>
-                  </Aads>
                 </FileArmAds>
               </FileOption>
             </File>
@@ -854,18 +830,6 @@
                     <v6WtE>2</v6WtE>
                     <v6Rtti>2</v6Rtti>
                   </Cads>
-                  <Aads>
-                    <interw>2</interw>
-                    <Ropi>2</Ropi>
-                    <Rwpi>2</Rwpi>
-                    <thumb>2</thumb>
-                    <SplitLS>2</SplitLS>
-                    <SwStkChk>2</SwStkChk>
-                    <NoWarn>2</NoWarn>
-                    <uSurpInc>2</uSurpInc>
-                    <useXO>2</useXO>
-                    <ClangAsOpt>1</ClangAsOpt>
-                  </Aads>
                 </FileArmAds>
               </FileOption>
             </File>
@@ -1031,11 +995,6 @@
               <FilePath>..\Code\Src\pid.c</FilePath>
             </File>
             <File>
-              <FileName>pid.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\Code\Inc\pid.h</FilePath>
-            </File>
-            <File>
               <FileName>control.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Code\Src\control.c</FilePath>
@@ -1051,11 +1010,6 @@
               <FilePath>..\Code\Src\odometry.c</FilePath>
             </File>
             <File>
-              <FileName>odometry.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\Code\Inc\odometry.h</FilePath>
-            </File>
-            <File>
               <FileName>display_ui.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Code\Src\display_ui.c</FilePath>
@@ -1064,6 +1018,16 @@
               <FileName>st7735.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Code\Src\st7735.c</FilePath>
+            </File>
+            <File>
+              <FileName>openmv.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Code\Src\openmv.c</FilePath>
+            </File>
+            <File>
+              <FileName>openmv.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Code\Inc\openmv.h</FilePath>
             </File>
           </Files>
         </Group>
