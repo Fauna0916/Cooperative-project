@@ -5,7 +5,6 @@
 #include "bno080.h"
 #include <math.h>
 
-
 // 轮子直径，单位：米
 #define WHEEL_DIAMETER 0.045f
 
@@ -14,12 +13,9 @@
 
 // 13 * 20 * 4 = 1040
 #define ENCODER_PPR 1040.0f
-
-// s
-#define ODO_UPDATE_PERIOD 0.01f
+#define ODO_UPDATE_PERIOD 0.01f // s
 
 #define PI 3.1415926535f
-
 
 typedef struct
 {
@@ -33,7 +29,6 @@ typedef struct
     float angular_vel; // 角速度，单位：弧度/秒 (rad/s)
 } Odometry_State_t;
 
-
 /**
  * @brief  初始化/重置里程计
  * @param  start_x: 初始 X 坐标 (通常为 0)
@@ -41,10 +36,7 @@ typedef struct
  * @param  start_theta: 初始朝向角 (通常为 0)
  */
 void Odometry_Init(float start_x, float start_y, float start_theta);
-
-
 void Odometry_Update(void);
-
 Odometry_State_t *Odometry_GetState(void);
 
 #endif

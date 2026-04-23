@@ -3,13 +3,22 @@
 extern BNO080_State_t bno_state;
 extern uint8_t bno_rx_buffer[BNO_READ_SIZE];
 
+extern uint8_t debug_flag;
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim == &htim7) // 0.01s
     {
-        //Encoder_Update();
         Control_Update();
+
+        static uint8_t debug_cnt = 0;
+        debug_cnt++;
+        if(debug_cnt >=10)
+        {
+            debug_cnt = 0;
+            debug_flag = 1;
+        }
+        
     }
 }
 
@@ -17,10 +26,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart == &huart2)
     {
-       
     }
 }
-
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {

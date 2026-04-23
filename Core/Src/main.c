@@ -20,7 +20,7 @@
 #include "main.h"
 #include "dma.h"
 #include "i2c.h"
-#include "memorymap.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -106,10 +106,9 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM7_Init();
   MX_I2C1_Init();
+  MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
- // HAL_Delay(2000); // wait for peripherals to stabilize
-  
-  uint8_t msg[80];
+  // HAL_Delay(2000); // wait for peripherals to stabilize
 
   HAL_TIM_Base_Start_IT(&htim7);
 
@@ -122,38 +121,46 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   /* USER CODE BEGIN 2 */
-  //Motor_SetSpeed(6000,6000);
+  // Motor_SetSpeed(6000,6000);
 
   /* USER CODE END 2 */
   while (1)
   {
-    // Control_SetIMUHeading(0.0f, 0.0f);
-    // if (HAL_GetTick() % 6000 < 2000)
+    //Control_SetIMUHeading(0.0f, PI / 2);
+
+    // if (HAL_GetTick() % 6000 < 3000)
     // {
-    //   Control_SetVelocity(0.1f, 0.0f); 
-    // }
-    // else if (HAL_GetTick() % 6000 < 4000)
-    // {
-    //   Control_SetVelocity(-0.1f, 0.0f); 
+    //   // Control_SetVelocity(0.1f, 0.0f);
+    //   Control_SetIMUHeading(0.0f, PI / 4);
     // }
     // else
     // {
-    //   Control_SetVelocity(0.0f, 0.0f);
+    //   // Control_SetVelocity(-0.1f, 0.0f);
+    //   Control_SetIMUHeading(0.0f, -PI / 4);
     // }
+
+    if (HAL_GetTick() % 6000 < 2000)
+    {
+      Control_SetVelocity(0.2f, 0.0f);
+      //Control_SetIMUHeading(0.0f, PI / 4);
+    }
+    else if (HAL_GetTick() % 6000 < 4000)
+    {
+      Control_SetVelocity(-0.2f, 0.0f);
+      //Control_SetIMUHeading(0.0f, -PI / 4);
+    }
+    else
+    {
+      Control_SetVelocity(0.0f, 0.0f);
+      //Control_SetIMUHeading(0.0f, 0.1);
+    }
     debug_info();
-    
-    //HAL_Delay(3000);
-  
+
+    // HAL_Delay(3000);
 
     if (BNO080_READY_TO_READ == BNO080_Update())
     {
-      uint8_t len = snprintf((char *)msg, sizeof(msg), "YPR: %.1f %.1f %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f,
-                             BNO080_GetLatestData()->pitch * 57.29578f,
-                             BNO080_GetLatestData()->roll * 57.29578f);
-      HAL_UART_Transmit_IT(&huart2, msg, len);
     }
-
-
 
     /* USER CODE END WHILE */
 
@@ -231,6 +238,7 @@ void MPU_Config(void)
 
   /* Disables the MPU */
   HAL_MPU_Disable();
+
   /* Enables the MPU */
   HAL_MPU_Enable(MPU_HFNMI_PRIVDEF);
 
@@ -250,8 +258,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

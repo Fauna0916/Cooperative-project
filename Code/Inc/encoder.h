@@ -21,4 +21,11 @@ void Encoder_Update(void);
 Motor_Data_t *Encoder_GetLeftData(void);
 Motor_Data_t *Encoder_GetRightData(void);
 
+/**
+ * @brief  基于编码器计算当前的理论
+ *
+ */
+float Encoder_GetLinearVelocity(void);
+float Encoder_GetAngularVelocity(void);
+
 #endif

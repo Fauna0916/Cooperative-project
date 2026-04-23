@@ -38,7 +38,7 @@ static float WrapAngleError(float target, float current)
 
 void Control_Init(void)
 {
-    Tuning = &IMU_loop;
+    Tuning = &Velocity_loop;
 
     Motor_Init();
     Encoder_Init();
@@ -68,7 +68,7 @@ static void Kinematics_VelocityToRPM(float linear_v, float angular_w, float *rpm
 
     // 转换公式：v (m/s) -> 圈/秒 -> 圈/分 (RPM)
     // 轮子周长 = PI * WHEEL_DIAMETER
-    const float conversion_factor = 60.0f / (PI * WHEEL_DIAMETER);
+    static const float conversion_factor = 60.0f / (PI * WHEEL_DIAMETER);
 
     *rpm_l = v_l * conversion_factor;
     *rpm_r = v_r * conversion_factor;

@@ -65,6 +65,12 @@ void Error_Handler(void);
 #define ENCODER_RIGHT_A_GPIO_Port GPIOA
 #define ENCODER_RIGHT_B_Pin GPIO_PIN_7
 #define ENCODER_RIGHT_B_GPIO_Port GPIOA
+#define TFT_BL_Pin GPIO_PIN_10
+#define TFT_BL_GPIO_Port GPIOE
+#define TFT_CS_Pin GPIO_PIN_11
+#define TFT_CS_GPIO_Port GPIOE
+#define TFT_DC_Pin GPIO_PIN_13
+#define TFT_DC_GPIO_Port GPIOE
 #define MOTOR_LEFT_IN1_Pin GPIO_PIN_12
 #define MOTOR_LEFT_IN1_GPIO_Port GPIOD
 #define MOTOR_LEFT_IN2_Pin GPIO_PIN_13

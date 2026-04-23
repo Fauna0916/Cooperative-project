@@ -1,6 +1,8 @@
 #include "utils.h"
 #include "string.h"
 
+uint8_t debug_flag = 0;
+
 int fputc(int ch, FILE *f)
 {
     HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 10);
@@ -22,13 +24,19 @@ void I2C_VerifyCommunication(I2C_HandleTypeDef *device_I2C, uint16_t device_addr
 
 void debug_info(void)
 {
-    printf("letf:%d,%d\r\n", Encoder_GetLeftData()->total_ticks, Encoder_GetLeftData()->speed_rpm);
-    printf("right:%d,%d\r\n", Encoder_GetRightData()->total_ticks, Encoder_GetRightData()->speed_rpm);
-    // printf("x:%.1f,y:%.1f,theta:%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->theta);
+    if(debug_flag)
+    {
+        debug_flag = 0;
+        // printf("letf:%d\r\n", Encoder_GetLeftData()->speed_rpm);
+        // printf("right:%d\r\n", Encoder_GetRightData()->speed_rpm);
+        // printf("x:%.1f,y:%.1f,theta:%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->theta);
+        // printf("[Enc] v:%.3f,w:%.3f\r\n", Encoder_GetLinearVelocity(), Encoder_GetAngularVelocity());
+        printf("[Odo] v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);
+        printf("YPR: %.1f %.1f %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f,
+               BNO080_GetLatestData()->pitch * 57.29578f,
+               BNO080_GetLatestData()->roll * 57.29578f);
+    }
 
-    printf("v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);
-
-    HAL_Delay(100);
 }
 
 #define RX_BUF_SIZE 100

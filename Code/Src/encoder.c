@@ -1,4 +1,5 @@
 #include "encoder.h"
+#include "odometry.h"
 
 #define LEFT_TIM (htim2)
 #define RIGHT_TIM (htim3)
@@ -65,4 +66,37 @@ Motor_Data_t *Encoder_GetLeftData(void)
 Motor_Data_t *Encoder_GetRightData(void)
 {
     return &right_motor;
+}
+
+
+
+
+
+
+float Encoder_GetLinearVelocity(void)
+{
+    Motor_Data_t *left = Encoder_GetLeftData();
+    Motor_Data_t *right = Encoder_GetRightData();
+
+    // 转换因子：RPM 转 m/s
+    float factor = (PI * WHEEL_DIAMETER) / 60.0f;
+
+    float v_l = left->speed_rpm * factor;
+    float v_r = right->speed_rpm * factor;
+
+    return (v_r + v_l) / 2.0f;
+}
+
+float Encoder_GetAngularVelocity(void)
+{
+    Motor_Data_t *left = Encoder_GetLeftData();
+    Motor_Data_t *right = Encoder_GetRightData();
+
+    float factor = (PI * WHEEL_DIAMETER) / 60.0f;
+
+    float v_l = left->speed_rpm * factor;
+    float v_r = right->speed_rpm * factor;
+
+    // 根据你的定义：右轮快于左轮为正（左转）
+    return (v_r - v_l) / TRACK_WIDTH;
 }
