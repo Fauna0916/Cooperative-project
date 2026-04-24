@@ -3,12 +3,11 @@
 
 #include "main.h"
 
-// OpenMV 返回的状态标志位枚举
 typedef enum
 {
-    FLAG_NORMAL = 0, // 正常巡线
-    FLAG_CORNER = 1, // 发现90度直角或十字路口
-    FLAG_LOST = 2    // 丢线 (可能前方是障碍盒或虚线)
+    OpenMV_FLAG_NORMAL = 0, // 正常巡线
+    OpenMV_FLAG_CORNER = 1, // 发现90度直角或十字路口
+    OpenMV_FLAG_LOST = 0xFF    // 丢线 (可能前方是障碍盒或虚线)
 } OpenMV_Flag_t;
 
 typedef struct

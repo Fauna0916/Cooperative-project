@@ -11,7 +11,8 @@
 PID_PARA *Tuning;
 
 PID_PARA Velocity_loop = {8, 2.75, 0};
-PID_PARA Vision_loop = {0, 0, 0};
+//PID_PARA Vision_loop = {0.0159, 0.0, 0.054};
+PID_PARA Vision_loop = {0.0264, 0.0, 0.20};
 PID_PARA IMU_loop = {0, 0, 0};
 
 static PID_TypeDef pid_left_motor;  // 左轮内环 (速度环)
@@ -24,7 +25,6 @@ static Control_Mode_t current_mode = CTRL_STOP;
 static float target_linear_v = 0.0f;
 static float target_angular_w = 0.0f;
 static float current_line_error = 0.0f;
-
 
 static float WrapAngleError(float target, float current)
 {
@@ -185,4 +185,3 @@ void Control_SetIMUHeading(float linear_vel, float target_yaw)
 
     target_imu_yaw = target_yaw;
 }
-

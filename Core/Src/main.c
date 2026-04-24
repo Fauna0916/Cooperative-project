@@ -129,36 +129,44 @@ int main(void)
   /* USER CODE END 2 */
   while (1)
   {
-    if (OpenMV_GetData()->is_updated)
-    {
-      OpenMV_GetData()->is_updated = 0;
-      Control_SetLineError(0.0f, OpenMV_GetData()->error);
-      static uint8_t cnt = 0;
-      cnt++;
-      if (cnt >= 10)
-      {
-        cnt = 0;
-        printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
-      }
-    }
+    // if (OpenMV_GetData()->is_updated)
+    // {
+    //   OpenMV_GetData()->is_updated = 0;
+    //   if (OpenMV_FLAG_NORMAL == OpenMV_GetData()->flag)
+    //   {
+    //     Control_SetLineError(0.3f, OpenMV_GetData()->error);
+    //   }
+    //   else if (OpenMV_FLAG_LOST == OpenMV_GetData()->flag)
+    //   {
+    //     Control_SetLineError(0.0f, OpenMV_GetData()->error);
+    //   }
+
+    //     static uint8_t cnt = 0;
+    //   cnt++;
+    //   if (cnt >= 50)
+    //   {
+    //     cnt = 0;
+    //     printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
+    //   }
+    // }
 
     // Control_SetVelocity(0.1, 0);
-    //   Control_SetIMUHeading(0.0f, PI / 2);
+    //Control_SetIMUHeading(0.0f, PI / 2);
 
-    // if (HAL_GetTick() % 9000 < 3000)
-    // {
-    //   // Control_SetVelocity(0.1f, 0.0f);
-    //   Control_SetIMUHeading(0.0f, PI / 2);
-    // }
-    // else if (HAL_GetTick() % 9000 < 6000)
-    // {
-    //   // Control_SetVelocity(-0.1f, 0.0f);
-    //   Control_SetIMUHeading(0.0f, 0);
-    // }
-    // else
-    // {
-    //   Control_SetIMUHeading(0.0f, -PI / 2);
-    // }
+    if (HAL_GetTick() % 9000 < 3000)
+    {
+      // Control_SetVelocity(0.1f, 0.0f);
+      Control_SetIMUHeading(0.0f, PI / 2);
+    }
+    else if (HAL_GetTick() % 9000 < 6000)
+    {
+      // Control_SetVelocity(-0.1f, 0.0f);
+      Control_SetIMUHeading(0.0f, 0);
+    }
+    else
+    {
+      Control_SetIMUHeading(0.0f, -PI / 2);
+    }
 
     debug_info();
 
