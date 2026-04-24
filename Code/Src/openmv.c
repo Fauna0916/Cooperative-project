@@ -1,14 +1,15 @@
 #include "openmv.h"
-#include "usart.h" 
+#include "usart.h"
 #include <string.h>
 #include <stdio.h>
 
 #define OPENMV_UART huart3
 #define OPENMV_RX_SIZE 64
 
-
 ALIGN_32BYTES(uint8_t openmv_rx_buf[OPENMV_RX_SIZE])
-__attribute__((section(".ARM.__at_0x24000100")));
+__attribute__((section(".ARM.__at_0x30000000")));
+
+uint8_t openmv_work_buf[OPENMV_RX_SIZE];
 
 static OpenMV_Data_t openmv_data = {0, FLAG_NORMAL, 0, 0};
 
@@ -20,29 +21,39 @@ void OpenMV_Init(void)
 
 static void Parse_OpenMV(uint8_t *data, uint16_t len)
 {
-    // 1. 寻找 0xAA 帧头
+    if (len < 5)
+        return;
+
+    // Loop through the buffer to find the header
     for (uint16_t i = 0; i <= (len - 5); i++)
     {
         if (data[i] == 0xAA)
         {
-            // 2. 校验和验证
+            // Calculate checksum (uint8_t handles the 8-bit wrap-around/mask automatically)
             uint8_t sum = data[i] + data[i + 1] + data[i + 2] + data[i + 3];
+
+            // Check against the received checksum byte
             if (sum == data[i + 4])
             {
-                // 3. 位运算拼接
-                // 小端序解析: data[i+1] 是低位, data[i+2] 是高位 (取决于OpenMV打包方式)
-                // 如果 OpenMV 用 '<h', 则 i+1 是低, i+2 是高
-                int16_t temp_err = (int16_t)(data[i + 2] << 8 | data[i + 1]);
+                // data[i+1] is Low Byte, data[i+2] is High Byte
+                int16_t temp_err = (int16_t)((uint16_t)data[i + 2] << 8 | data[i + 1]);
                 uint8_t temp_flg = data[i + 3];
 
+                // Store data
                 openmv_data.error = temp_err;
                 openmv_data.flag = (OpenMV_Flag_t)temp_flg;
                 openmv_data.is_updated = 1;
                 openmv_data.last_time = HAL_GetTick();
-                return; 
+
+                return;
             }
         }
     }
+}
+
+OpenMV_Data_t *OpenMV_GetData(void)
+{
+    return &openmv_data;
 }
 
 void OpenMV_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
@@ -58,7 +69,16 @@ void OpenMV_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     }
 }
 
-OpenMV_Data_t *OpenMV_GetData(void)
+void OpenMV_ErrorCallback(UART_HandleTypeDef *huart)
 {
-    return &openmv_data;
+    if (huart->Instance == OPENMV_UART.Instance)
+    {
+        uint32_t temp;
+        // Read SR/ISR and then DR/RDR to clear ORE
+        temp = huart->Instance->ISR;
+        temp = huart->Instance->RDR;
+        (void)temp;
+        // Restart DMA
+        HAL_UARTEx_ReceiveToIdle_DMA(&OPENMV_UART, openmv_rx_buf, OPENMV_RX_SIZE);
+    }
 }

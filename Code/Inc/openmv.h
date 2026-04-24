@@ -23,5 +23,6 @@ typedef struct
 void OpenMV_Init(void);
 OpenMV_Data_t *OpenMV_GetData(void);
 void OpenMV_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size);
+void OpenMV_ErrorCallback(UART_HandleTypeDef *huart);
 
 #endif 

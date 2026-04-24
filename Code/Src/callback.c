@@ -36,6 +36,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    OpenMV_ErrorCallback(huart);
+}
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     if (GPIO_Pin == BNO_INT_Pin)

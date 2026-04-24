@@ -5,7 +5,8 @@ uint8_t debug_flag = 0;
 
 #define RX_BUF_SIZE 100
 
-ALIGN_32BYTES(uint8_t rx_buffer[RX_BUF_SIZE]) __attribute__((section(".ARM.__at_0x24000040")));
+ALIGN_32BYTES(uint8_t rx_buffer[RX_BUF_SIZE])
+__attribute__((section(".ARM.__at_0x24000040")));
 
 int fputc(int ch, FILE *f)
 {
@@ -28,7 +29,7 @@ void I2C_VerifyCommunication(I2C_HandleTypeDef *device_I2C, uint16_t device_addr
 
 void debug_info(void)
 {
-    if(debug_flag)
+    if (debug_flag)
     {
         debug_flag = 0;
         // printf("letf:%d\r\n", Encoder_GetLeftData()->speed_rpm);
@@ -36,11 +37,10 @@ void debug_info(void)
         // printf("x:%.1f,y:%.1f,theta:%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->theta);
         // printf("[Enc] v:%.3f,w:%.3f\r\n", Encoder_GetLinearVelocity(), Encoder_GetAngularVelocity());
         printf("[Odo] v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);
-        printf("YPR: %.1f %.1f %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f,
-               BNO080_GetLatestData()->pitch * 57.29578f,
-               BNO080_GetLatestData()->roll * 57.29578f);
+        // printf("YPR: %.1f %.1f %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f,
+        //        BNO080_GetLatestData()->pitch * 57.29578f,
+        //        BNO080_GetLatestData()->roll * 57.29578f);
     }
-
 }
 
 void Tuning_Init(void)
