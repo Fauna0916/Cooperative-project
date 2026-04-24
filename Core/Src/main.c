@@ -153,28 +153,28 @@ int main(void)
     // Control_SetVelocity(0.1, 0);
     //Control_SetIMUHeading(0.0f, PI / 2);
 
-    if (HAL_GetTick() % 9000 < 3000)
+    if (HAL_GetTick() % 6000 < 3000)
     {
       // Control_SetVelocity(0.1f, 0.0f);
       Control_SetIMUHeading(0.0f, PI / 2);
     }
-    else if (HAL_GetTick() % 9000 < 6000)
-    {
-      // Control_SetVelocity(-0.1f, 0.0f);
-      Control_SetIMUHeading(0.0f, 0);
-    }
+    // else if (HAL_GetTick() % 9000 < 6000)
+    // {
+    //   // Control_SetVelocity(-0.1f, 0.0f);
+    //   Control_SetIMUHeading(0.0f, 0);
+    // }
     else
     {
-      Control_SetIMUHeading(0.0f, -PI / 2);
+      Control_SetIMUHeading(0.0f, 0);
     }
 
     debug_info();
 
     // HAL_Delay(3000);
 
-    //     if (BNO080_READY_TO_READ == BNO080_Update())
-    // {
-    // }
+        if (BNO080_READY_TO_READ == BNO080_Update())
+    {
+    }
 
     /* USER CODE END WHILE */
 

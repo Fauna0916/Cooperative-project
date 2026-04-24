@@ -9,8 +9,6 @@
 ALIGN_32BYTES(uint8_t openmv_rx_buf[OPENMV_RX_SIZE])
 __attribute__((section(".ARM.__at_0x30000000")));
 
-uint8_t openmv_work_buf[OPENMV_RX_SIZE];
-
 static OpenMV_Data_t openmv_data = {0, OpenMV_FLAG_NORMAL, 0, 0};
 
 void OpenMV_Init(void)

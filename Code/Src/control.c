@@ -46,10 +46,9 @@ void Control_Init(void)
 
     PID_Init(&pid_left_motor, Velocity_loop.Kp, Velocity_loop.Ki, Velocity_loop.Kd, 9500.0f, 3000.0f);
     PID_Init(&pid_right_motor, Velocity_loop.Kp, Velocity_loop.Ki, Velocity_loop.Kd, 9500.0f, 3000.0f);
-    PID_Init(&pid_imu_heading, IMU_loop.Kp, IMU_loop.Ki, IMU_loop.Kd, 3.0f, 1.0f);
+    PID_Init(&pid_imu_heading, IMU_loop.Kp, IMU_loop.Ki, IMU_loop.Kd, 4.0f, 1.0f);
 
     // 输入：像素偏移，输出：角速度(rad/s)
-    // 经验值：Kp=0.02, Ki=0.0, Kd=0.05
     PID_Init(&pid_line_follow, Vision_loop.Kp, Vision_loop.Ki, Vision_loop.Kd, 4.0f, 1.0f);
 
     current_mode = CTRL_STOP;
@@ -129,7 +128,6 @@ void Control_Update(void)
     }
     else if (current_mode == CTRL_SPEED_MODE)
     {
-        // 纯速度控制模式，直接解算
         Kinematics_VelocityToRPM(target_linear_v, target_angular_w, &target_rpm_l, &target_rpm_r);
     }
 
@@ -168,6 +166,12 @@ void Control_SetVelocity(float linear_vel, float angular_vel)
 
 void Control_SetLineError(float base_linear_vel, float openmv_error)
 {
+    // Only clear the PID if we are JUST transitioning into this mode
+    if (current_mode != CTRL_LINE_FOLLOWING)
+    {
+        PID_Clear(&pid_line_follow);
+    }
+
     current_mode = CTRL_LINE_FOLLOWING;
     target_linear_v = base_linear_vel;
     current_line_error = openmv_error;
@@ -175,6 +179,12 @@ void Control_SetLineError(float base_linear_vel, float openmv_error)
 
 void Control_SetIMUHeading(float linear_vel, float target_yaw)
 {
+    // Only clear the PID if we are JUST transitioning into this mode
+    if (current_mode != CTRL_IMU_HEADING)
+    {
+        PID_Clear(&pid_imu_heading);
+    }
+
     current_mode = CTRL_IMU_HEADING;
     target_linear_v = linear_vel;
 

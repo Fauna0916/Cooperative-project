@@ -68,11 +68,6 @@ Motor_Data_t *Encoder_GetRightData(void)
     return &right_motor;
 }
 
-
-
-
-
-
 float Encoder_GetLinearVelocity(void)
 {
     Motor_Data_t *left = Encoder_GetLeftData();
