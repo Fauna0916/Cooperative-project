@@ -58,6 +58,7 @@ void Odometry_Init(float start_x, float start_y, float start_theta)
     yaw_offset = BNO080_GetLatestData()->yaw - start_theta;
 }
 
+
 void Odometry_Update(void)
 {
     // --- 1. Calculate Encoder Deltas ---
@@ -73,11 +74,11 @@ void Odometry_Update(void)
     float dist_r = delta_ticks_r * meters_per_tick;
     float delta_dist = (dist_r + dist_l) / 2.0f; // Linear displacement increment
 
-    // --- 2. Calculate Backup Heading Delta (Encoder Kinematics) ---
+    // --- Calculate Backup Heading Delta (Encoder Kinematics) ---
     // Formula: Δθ = (dr - dl) / Wheel_Track_Width
     float delta_theta_encoder = (dist_r - dist_l) / TRACK_WIDTH;
 
-    // --- 3. Process IMU (BNO080) Data ---
+    // --- Process IMU (BNO080) Data ---
     float delta_theta = 0.0f;
     uint32_t current_tick = HAL_GetTick();
 
@@ -85,48 +86,56 @@ void Odometry_Update(void)
     if (bno_state == BNO080_IDLE &&
         ((uint32_t)(current_tick - BNO080_GetLatestData()->last_update_tick) < 50))
     {
+        // 1Get the absolute orientation from IMU (minus the startup offset)
         float current_bno_yaw = BNO080_GetLatestData()->yaw - yaw_offset;
+        current_bno_yaw = Math_NormalizeAngle(current_bno_yaw);
 
         if (is_first_run)
         {
-            // First frame after initialization or recovery:
-            // Use encoder delta as a bridge while resyncing the IMU baseline
-            delta_theta = delta_theta_encoder;
+            delta_theta = 0.0f;
+            odo_state.theta = current_bno_yaw; // Snap to absolute
             last_bno_yaw = current_bno_yaw;
             is_first_run = 0;
         }
         else
         {
-            // Normal operation: Compute heading change from IMU
+            // Calculate delta for velocity and X,Y integration
             delta_theta = Math_NormalizeAngleError(current_bno_yaw, last_bno_yaw);
 
-            // Spike Rejection: If change > 0.5 rad (~30 deg) in 10ms, assume interference
+            // Spike Rejection
             if (fabs(delta_theta) > 0.5f)
             {
-                delta_theta = delta_theta_encoder; // Fallback to encoders
+                delta_theta = delta_theta_encoder;
+                odo_state.theta = Math_NormalizeAngle(odo_state.theta + delta_theta); // Fallback to relative
             }
-
+            else
+            {
+                // we set theta DIRECTLY to the IMU absolute value.
+                odo_state.theta = current_bno_yaw;
+            }
             last_bno_yaw = current_bno_yaw;
         }
     }
     else
     {
-        // IMU Failed or Timed out: Rely entirely on encoders
+        // IMU Failed: Must use relative integration from encoders
         delta_theta = delta_theta_encoder;
-        is_first_run = 1; // Flag for resync when IMU returns
+        odo_state.theta = Math_NormalizeAngle(odo_state.theta + delta_theta);
+        is_first_run = 1;
     }
 
-    // --- 4. Update Velocity States ---
+    // --- Update Velocity States ---
     odo_state.linear_vel = delta_dist / ODO_UPDATE_PERIOD;
     odo_state.angular_vel = delta_theta / ODO_UPDATE_PERIOD;
 
-    // --- 5. Integrate X, Y using 2nd-Order Runge-Kutta (Midpoint Method) ---
+    // --- Integrate X, Y using 2nd-Order Runge-Kutta (Midpoint Method) ---
     // Calculate the average heading during this time step for smoother path integration
     float avg_theta = Math_NormalizeAngle(odo_state.theta + (delta_theta / 2.0f));
     odo_state.x += delta_dist * cosf(avg_theta);
     odo_state.y += delta_dist * sinf(avg_theta);
 
     odo_state.theta = Math_NormalizeAngle(odo_state.theta + delta_theta);
+
 }
 
 Odometry_State_t *Odometry_GetState(void)

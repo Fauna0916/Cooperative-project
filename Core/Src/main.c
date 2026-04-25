@@ -150,28 +150,26 @@ int main(void)
     //   }
     // }
 
-
-    if (HAL_GetTick() % 6000 < 3000)
+    if (HAL_GetTick() % 8000 < 2000)
     {
-      //Control_SetVelocity(0.8f, 0.0f);
       Control_SetIMUHeading(0.0f, PI / 2);
     }
-    // else if (HAL_GetTick() % 9000 < 6000)
-    // {
-    //   // Control_SetVelocity(-0.1f, 0.0f);
-    //   Control_SetIMUHeading(0.0f, 0);
-    // }
+    else if (HAL_GetTick() % 8000 < 4000)
+    {
+      Control_SetIMUHeading(0.0f, 0);
+    }
+    else if (HAL_GetTick() % 8000 < 6000)
+    {
+      Control_SetIMUHeading(0.0f, -PI / 2);
+    }
     else
     {
-      //Control_SetVelocity(0.3f, 0.0f);
       Control_SetIMUHeading(0.0f, 0);
     }
 
     debug_info();
 
-    // HAL_Delay(3000);
-
-        if (BNO080_READY_TO_READ == BNO080_Update())
+    if (BNO080_READY_TO_READ == BNO080_Update())
     {
     }
 
