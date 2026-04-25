@@ -14,7 +14,7 @@ PID_PARA *Tuning;
 PID_PARA Velocity_loop = {8, 2.75, 0};
 // PID_PARA Vision_loop = {0.0159, 0.0, 0.054};
 PID_PARA Vision_loop = {0.0264, 0.0, 0.20};
-PID_PARA IMU_loop = {0, 0.0, 0.0};
+PID_PARA IMU_loop = {2.69, 0.012, 0.09};
 
 static PID_TypeDef pid_left_motor;
 static PID_TypeDef pid_right_motor;
