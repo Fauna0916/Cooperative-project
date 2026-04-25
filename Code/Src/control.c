@@ -9,30 +9,42 @@
 #define MAX_ANGULAR_VELOCITY 6.0f
 #define CORNERING_PENALTY_COEFF (0.15f)
 
-// Acceleration configuration:
-// If loop is 10ms (100Hz), MAX_ACCEL = 0.01f means 1.0 m/s^2 acceleration.
-// Adjust this to 0.02f for 2.0 m/s^2 if the car feels too sluggish.
-#define MAX_ACCEL 0.015f
-
 PID_PARA *Tuning;
 
 PID_PARA Velocity_loop = {8, 2.75, 0};
 // PID_PARA Vision_loop = {0.0159, 0.0, 0.054};
 PID_PARA Vision_loop = {0.0264, 0.0, 0.20};
-PID_PARA IMU_loop = {0, 0, 0};
+PID_PARA IMU_loop = {0, 0.0, 0.0};
 
-static PID_TypeDef pid_left_motor;  
+static PID_TypeDef pid_left_motor;
 static PID_TypeDef pid_right_motor;
 static PID_TypeDef pid_line_follow; // 视觉外环 (位置/角度环)
 static PID_TypeDef pid_imu_heading;
-static float target_imu_yaw = 0.0f;
 
 static Control_Mode_t current_mode = CTRL_STOP;
 static float target_linear_v = 0.0f;
 static float target_angular_w = 0.0f;
 static float current_line_error = 0.0f;
 
+/*ramp*/
+#define MAX_ACCEL 0.015f              // loop is 10ms(100Hz), MAX_ACCEL = 0.01f means 1.0 m / s ^ 2 acceleration.
+#define YAW_RAMP_SPEED_DEFAULT 0.015f // 0.01 rad per 10ms = 1.0 rad/s (approx 57 deg/s)
+
 static float current_smoothed_v = 0.0f; // Persistent state for ramping
+
+static float ramp_target_yaw = 0.0f;  // The moving target the PID follows
+static float final_target_yaw = 0.0f; // The ultimate destination
+static float yaw_ramp_step = 0.01f;   // How much the angle increases per 10ms (Speed)
+
+static float WrapAngleError(float target, float current)
+{
+    float error = target - current;
+    while (error > PI)
+        error -= 2.0f * PI;
+    while (error < -PI)
+        error += 2.0f * PI;
+    return error;
+}
 
 static float Velocity_Ramp(float target, float current)
 {
@@ -50,14 +62,35 @@ static float Velocity_Ramp(float target, float current)
     }
 }
 
-static float WrapAngleError(float target, float current)
+/**
+ * @brief  Updates the ramp setpoint towards the final target
+ * @return 1 if ramp reached final target, 0 otherwise
+ */
+uint8_t Update_Yaw_Ramp(void)
 {
-    float error = target - current;
-    while (error > PI)
-        error -= 2.0f * PI;
-    while (error < -PI)
-        error += 2.0f * PI;
-    return error;
+    float error = WrapAngleError(final_target_yaw, ramp_target_yaw);
+
+    if (fabs(error) < yaw_ramp_step)
+    {
+        ramp_target_yaw = final_target_yaw;
+        return 1; // Reached
+    }
+    else
+    {
+        // Move ramp_target closer to final_target by one small step
+        if (error > 0)
+            ramp_target_yaw += yaw_ramp_step;
+        else
+            ramp_target_yaw -= yaw_ramp_step;
+
+        // Keep ramp_target in -PI to PI range
+        if (ramp_target_yaw > PI)
+            ramp_target_yaw -= 2.0f * PI;
+        if (ramp_target_yaw < -PI)
+            ramp_target_yaw += 2.0f * PI;
+
+        return 0; // Still moving
+    }
 }
 
 void Control_Init(void)
@@ -114,7 +147,7 @@ void Control_Update(void)
     Encoder_Update();
     Odometry_Update();
 
-      // Handle Stop Condition
+    // Handle Stop Condition
     if (current_mode == CTRL_STOP)
     {
         current_smoothed_v = 0.0f; // Reset ramp state
@@ -137,8 +170,10 @@ void Control_Update(void)
         float penalty = fabs(final_target_w) * CORNERING_PENALTY_COEFF;
         float raw_target = target_linear_v - penalty;
 
-        if (raw_target < 0.2f)
-            raw_target = 0.2f; // Minimum speed floor
+        if (target_linear_v > 0.1f && raw_target < 0.2f)
+        {
+            raw_target = 0.2f;
+        }
 
         // Apply Ramping
         current_smoothed_v = Velocity_Ramp(raw_target, current_smoothed_v);
@@ -146,7 +181,9 @@ void Control_Update(void)
     }
     else if (current_mode == CTRL_IMU_HEADING)
     {
-        float angle_err = WrapAngleError(target_imu_yaw, Odometry_GetState()->theta);
+        Update_Yaw_Ramp();
+
+        float angle_err = WrapAngleError(ramp_target_yaw, Odometry_GetState()->theta);
         final_target_w = PID_Compute(&pid_imu_heading, 0.0f, -angle_err);
 
         current_smoothed_v = Velocity_Ramp(target_linear_v, current_smoothed_v);
@@ -210,21 +247,28 @@ void Control_SetLineError(float base_linear_vel, float openmv_error)
 
 void Control_SetIMUHeading(float linear_vel, float target_yaw)
 {
-    // Only clear the PID if we are JUST transitioning into this mode
-    if (current_mode != CTRL_IMU_HEADING)
-    {
-        PID_Clear(&pid_imu_heading);
-    }
-
-    current_mode = CTRL_IMU_HEADING;
-    target_linear_v = linear_vel;
-
     while (target_yaw > PI)
         target_yaw -= 2.0f * PI;
     while (target_yaw < -PI)
         target_yaw += 2.0f * PI;
 
-    target_imu_yaw = target_yaw;
+    // Only clear the PID if we are JUST transitioning into this mode
+    if (current_mode != CTRL_IMU_HEADING || fabs(WrapAngleError(target_yaw, final_target_yaw)) > 0.02f)
+    {
+        PID_Clear(&pid_imu_heading);
+        ramp_target_yaw = Odometry_GetState()->theta;
+        final_target_yaw = target_yaw;
+    }
+
+    current_mode = CTRL_IMU_HEADING;
+    target_linear_v = linear_vel;
+
+    // Set turn speed based on linear velocity
+    // If linear_vel is 0 (stationary turn), use a slower ramp for precision
+    if (linear_vel == 0)
+        yaw_ramp_step = 0.01f;
+    else
+        yaw_ramp_step = 0.02f;
 }
 
 bool Control_IsHeadingSettled(void)
@@ -233,7 +277,7 @@ bool Control_IsHeadingSettled(void)
         return false;
 
     float current_yaw = Odometry_GetState()->theta;
-    float angle_err = WrapAngleError(target_imu_yaw, current_yaw);
+    float angle_err = WrapAngleError(final_target_yaw, current_yaw);
     float current_w = Odometry_GetState()->angular_vel; // Assuming odometry tracks w
 
     // If error is less than 2 degrees (0.035 rad) AND robot has mostly stopped spinning
