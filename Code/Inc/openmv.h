@@ -5,17 +5,17 @@
 
 typedef enum
 {
-    OpenMV_FLAG_NORMAL = 0, // 正常巡线
-    OpenMV_FLAG_CORNER = 1, // 发现90度直角或十字路口
-    OpenMV_FLAG_LOST = 0xFF    // 丢线 (可能前方是障碍盒或虚线)
+    OpenMV_FLAG_NORMAL = 0x00,
+    OpenMV_FLAG_CORNER_LEFT = 0x01,
+    OpenMV_FLAG_CORNER_RIGHT = 0x02,
+    OpenMV_FLAG_LOST = 0xFF
 } OpenMV_Flag_t;
-
 typedef struct
 {
     int16_t error;      // 像素偏差值 (-160 到 160)
     OpenMV_Flag_t flag; 
     uint8_t is_updated; 
-    uint32_t last_time; // 上次接收到数据的时间戳 (用于掉线保护)
+    uint32_t last_time;
 } OpenMV_Data_t;
 
 

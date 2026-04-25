@@ -43,6 +43,7 @@ void Odometry_Init(float start_x, float start_y, float start_theta)
     odo_state.x = start_x;
     odo_state.y = start_y;
     odo_state.theta = start_theta;
+    odo_state.distance = 0.0f;
 
     odo_state.linear_vel = 0.0f;
     odo_state.angular_vel = 0.0f;
@@ -61,7 +62,7 @@ void Odometry_Init(float start_x, float start_y, float start_theta)
 
 void Odometry_Update(void)
 {
-    // --- 1. Calculate Encoder Deltas ---
+    // --- Calculate Encoder Deltas ---
     int32_t current_ticks_l = Encoder_GetLeftData()->total_ticks;
     int32_t current_ticks_r = Encoder_GetRightData()->total_ticks;
     int32_t delta_ticks_l = current_ticks_l - last_total_ticks_l;
@@ -73,6 +74,8 @@ void Odometry_Update(void)
     float dist_l = delta_ticks_l * meters_per_tick;
     float dist_r = delta_ticks_r * meters_per_tick;
     float delta_dist = (dist_r + dist_l) / 2.0f; // Linear displacement increment
+
+    odo_state.distance += delta_dist;
 
     // --- Calculate Backup Heading Delta (Encoder Kinematics) ---
     // Formula: Δθ = (dr - dl) / Wheel_Track_Width
@@ -133,9 +136,6 @@ void Odometry_Update(void)
     float avg_theta = Math_NormalizeAngle(odo_state.theta + (delta_theta / 2.0f));
     odo_state.x += delta_dist * cosf(avg_theta);
     odo_state.y += delta_dist * sinf(avg_theta);
-
-    odo_state.theta = Math_NormalizeAngle(odo_state.theta + delta_theta);
-
 }
 
 Odometry_State_t *Odometry_GetState(void)

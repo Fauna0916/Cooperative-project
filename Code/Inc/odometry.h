@@ -23,6 +23,7 @@ typedef struct
     float x;     // X 坐标，单位：米
     float y;     // Y 坐标，单位：米
     float theta; // 偏航角，单位：弧度 (范围 -PI 到 PI)
+    float distance;
 
     // 瞬时速度 (机器人坐标系)
     float linear_vel;  // 线速度，单位：米/秒 (m/s)

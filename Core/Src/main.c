@@ -31,9 +31,8 @@
 #include "callback.h"
 #include "utils.h"
 #include "bno080.h"
-#include "motor.h"
-#include "control.h"
 #include "openmv.h"
+#include "robot_task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -116,8 +115,8 @@ int main(void)
 
   Tuning_Init();
   BNO080_Init();
-  Control_Init();
   OpenMV_Init();
+  RobotTask_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -129,45 +128,45 @@ int main(void)
   /* USER CODE END 2 */
   while (1)
   {
-    // if (OpenMV_GetData()->is_updated)
-    // {
-    //   OpenMV_GetData()->is_updated = 0;
-    //   if (OpenMV_FLAG_NORMAL == OpenMV_GetData()->flag)
-    //   {
-    //     Control_SetLineError(0.3f, OpenMV_GetData()->error);
-    //   }
-    //   else if (OpenMV_FLAG_LOST == OpenMV_GetData()->flag)
-    //   {
-    //     Control_SetLineError(0.0f, OpenMV_GetData()->error);
-    //   }
+    if (OpenMV_GetData()->is_updated)
+    {
+      OpenMV_GetData()->is_updated = 0;
 
-    //     static uint8_t cnt = 0;
-    //   cnt++;
-    //   if (cnt >= 50)
-    //   {
-    //     cnt = 0;
-    //     printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
-    //   }
-    // }
+      RobotTask_Update(OpenMV_GetData()->flag, OpenMV_GetData()->error);
+      // if (OpenMV_FLAG_NORMAL == OpenMV_GetData()->flag)
+      // {
+      //   Control_SetLineError(0.3f, OpenMV_GetData()->error);
+      // }
+      // else if (OpenMV_FLAG_LOST == OpenMV_GetData()->flag)
+      // {
+      //   Control_SetLineError(0.0f, OpenMV_GetData()->error);
+      // }
 
-    if (HAL_GetTick() % 8000 < 2000)
-    {
-      Control_SetIMUHeading(0.0f, PI / 2);
-    }
-    else if (HAL_GetTick() % 8000 < 4000)
-    {
-      Control_SetIMUHeading(0.0f, 0);
-    }
-    else if (HAL_GetTick() % 8000 < 6000)
-    {
-      Control_SetIMUHeading(0.0f, -PI / 2);
+      printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
     }
     else
     {
-      Control_SetIMUHeading(0.0f, 0);
+      RobotTask_Update(OpenMV_FLAG_LOST, 0);
     }
 
-    debug_info();
+    // if (HAL_GetTick() % 8000 < 2000)
+    // {
+    //   Control_SetIMUHeading(0.0f, PI / 2);
+    // }
+    // else if (HAL_GetTick() % 8000 < 4000)
+    // {
+    //   Control_SetIMUHeading(0.0f, 0);
+    // }
+    // else if (HAL_GetTick() % 8000 < 6000)
+    // {
+    //   Control_SetIMUHeading(0.0f, -PI / 2);
+    // }
+    // else
+    // {
+    //   Control_SetIMUHeading(0.0f, 0);
+    // }
+
+    // debug_info();
 
     if (BNO080_READY_TO_READ == BNO080_Update())
     {

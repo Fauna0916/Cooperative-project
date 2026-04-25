@@ -19,7 +19,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
             debug_cnt = 0;
             debug_flag = 1;
         }
-        
+
     }
 }
 
