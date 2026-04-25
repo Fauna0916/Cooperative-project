@@ -5,18 +5,24 @@
 #include <math.h>
 #include "utils.h"
 
-#define MAX_LINEAR_VELOCITY 1.2f
+#define MAX_LINEAR_VELOCITY 1.5f
 #define MAX_ANGULAR_VELOCITY 6.0f
+#define CORNERING_PENALTY_COEFF (0.15f)
+
+// Acceleration configuration:
+// If loop is 10ms (100Hz), MAX_ACCEL = 0.01f means 1.0 m/s^2 acceleration.
+// Adjust this to 0.02f for 2.0 m/s^2 if the car feels too sluggish.
+#define MAX_ACCEL 0.015f
 
 PID_PARA *Tuning;
 
 PID_PARA Velocity_loop = {8, 2.75, 0};
-//PID_PARA Vision_loop = {0.0159, 0.0, 0.054};
+// PID_PARA Vision_loop = {0.0159, 0.0, 0.054};
 PID_PARA Vision_loop = {0.0264, 0.0, 0.20};
 PID_PARA IMU_loop = {0, 0, 0};
 
-static PID_TypeDef pid_left_motor;  // 左轮内环 (速度环)
-static PID_TypeDef pid_right_motor; // 右轮内环 (速度环)
+static PID_TypeDef pid_left_motor;  
+static PID_TypeDef pid_right_motor;
 static PID_TypeDef pid_line_follow; // 视觉外环 (位置/角度环)
 static PID_TypeDef pid_imu_heading;
 static float target_imu_yaw = 0.0f;
@@ -25,6 +31,24 @@ static Control_Mode_t current_mode = CTRL_STOP;
 static float target_linear_v = 0.0f;
 static float target_angular_w = 0.0f;
 static float current_line_error = 0.0f;
+
+static float current_smoothed_v = 0.0f; // Persistent state for ramping
+
+static float Velocity_Ramp(float target, float current)
+{
+    if (target > current + MAX_ACCEL)
+    {
+        return current + MAX_ACCEL;
+    }
+    else if (target < current - MAX_ACCEL)
+    {
+        return current - MAX_ACCEL;
+    }
+    else
+    {
+        return target;
+    }
+}
 
 static float WrapAngleError(float target, float current)
 {
@@ -90,8 +114,10 @@ void Control_Update(void)
     Encoder_Update();
     Odometry_Update();
 
+      // Handle Stop Condition
     if (current_mode == CTRL_STOP)
     {
+        current_smoothed_v = 0.0f; // Reset ramp state
         Motor_SetSpeed(0, 0);
         PID_Clear(&pid_left_motor);
         PID_Clear(&pid_right_motor);
@@ -99,39 +125,44 @@ void Control_Update(void)
         return;
     }
 
-    float target_rpm_l = 0.0f;
-    float target_rpm_r = 0.0f;
+    float final_target_v = 0.0f; // This will hold the ramped velocity
+    float final_target_w = target_angular_w;
 
-    // 2. 决策层：计算外环输出
+    // 3Decision Layer: Mode Selection
     if (current_mode == CTRL_LINE_FOLLOWING)
     {
-        // 视觉外环计算：目标是把偏差(current_line_error)消除为0
-        // 外环的输出值，就是小车需要的角速度 (rad/s)
-        target_angular_w = PID_Compute(&pid_line_follow, 0.0f, current_line_error);
+        final_target_w = PID_Compute(&pid_line_follow, 0.0f, current_line_error);
 
-        // 逆解算转换为电机 RPM
-        Kinematics_VelocityToRPM(target_linear_v, target_angular_w, &target_rpm_l, &target_rpm_r);
+        // Calculate raw target with cornering penalty
+        float penalty = fabs(final_target_w) * CORNERING_PENALTY_COEFF;
+        float raw_target = target_linear_v - penalty;
+
+        if (raw_target < 0.2f)
+            raw_target = 0.2f; // Minimum speed floor
+
+        // Apply Ramping
+        current_smoothed_v = Velocity_Ramp(raw_target, current_smoothed_v);
+        final_target_v = current_smoothed_v;
     }
     else if (current_mode == CTRL_IMU_HEADING)
     {
-        float current_yaw = Odometry_GetState()->theta;
+        float angle_err = WrapAngleError(target_imu_yaw, Odometry_GetState()->theta);
+        final_target_w = PID_Compute(&pid_imu_heading, 0.0f, -angle_err);
 
-        // 计算经过越界处理的最短角度误差
-        float angle_err = WrapAngleError(target_imu_yaw, current_yaw);
-
-        // 把误差直接喂给 PID，不使用它的 target-measured 减法计算
-        // 技巧：重置 target 为 0，把算好的 -angle_err 当作 measured
-        target_angular_w = PID_Compute(&pid_imu_heading, 0.0f, -angle_err);
-
-        // 逆解算给电机内环
-        Kinematics_VelocityToRPM(target_linear_v, target_angular_w, &target_rpm_l, &target_rpm_r);
+        current_smoothed_v = Velocity_Ramp(target_linear_v, current_smoothed_v);
+        final_target_v = current_smoothed_v;
     }
     else if (current_mode == CTRL_SPEED_MODE)
     {
-        Kinematics_VelocityToRPM(target_linear_v, target_angular_w, &target_rpm_l, &target_rpm_r);
+        current_smoothed_v = Velocity_Ramp(target_linear_v, current_smoothed_v);
+        final_target_v = current_smoothed_v;
     }
 
-    // 3. 执行层：内环电机速度闭环
+    // Kinematics Layer: Convert (v, w) -> (rpm_l, rpm_r)
+    float target_rpm_l, target_rpm_r;
+    Kinematics_VelocityToRPM(final_target_v, final_target_w, &target_rpm_l, &target_rpm_r);
+
+    // Execution Layer: Inner Speed Loop
     float measured_rpm_l = Encoder_GetLeftData()->speed_rpm;
     float measured_rpm_r = Encoder_GetRightData()->speed_rpm;
 
@@ -194,4 +225,21 @@ void Control_SetIMUHeading(float linear_vel, float target_yaw)
         target_yaw += 2.0f * PI;
 
     target_imu_yaw = target_yaw;
+}
+
+bool Control_IsHeadingSettled(void)
+{
+    if (current_mode != CTRL_IMU_HEADING)
+        return false;
+
+    float current_yaw = Odometry_GetState()->theta;
+    float angle_err = WrapAngleError(target_imu_yaw, current_yaw);
+    float current_w = Odometry_GetState()->angular_vel; // Assuming odometry tracks w
+
+    // If error is less than 2 degrees (0.035 rad) AND robot has mostly stopped spinning
+    if (fabs(angle_err) < 0.035f && fabs(current_w) < 0.1f)
+    {
+        return true;
+    }
+    return false;
 }

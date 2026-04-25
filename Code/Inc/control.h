@@ -2,6 +2,8 @@
 #define __CONTROL_H__
 
 #include "pid.h"
+#include <stdbool.h>
+
 
 typedef enum
 {
@@ -31,5 +33,6 @@ void Control_SetVelocity(float linear_vel, float angular_vel);
  */
 void Control_SetLineError(float base_linear_vel, float openmv_error);
 void Control_SetIMUHeading(float linear_vel, float target_yaw);
+bool Control_IsHeadingSettled(void);
 
 #endif

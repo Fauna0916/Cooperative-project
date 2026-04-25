@@ -155,8 +155,8 @@ int main(void)
 
     if (HAL_GetTick() % 6000 < 3000)
     {
-      // Control_SetVelocity(0.1f, 0.0f);
-      Control_SetIMUHeading(0.0f, PI / 2);
+      Control_SetVelocity(0.8f, 0.0f);
+      //Control_SetIMUHeading(0.0f, PI / 2);
     }
     // else if (HAL_GetTick() % 9000 < 6000)
     // {
@@ -165,7 +165,8 @@ int main(void)
     // }
     else
     {
-      Control_SetIMUHeading(0.0f, 0);
+      Control_SetVelocity(0.3f, 0.0f);
+      //Control_SetIMUHeading(0.0f, 0);
     }
 
     debug_info();
