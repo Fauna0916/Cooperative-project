@@ -1,10 +1,9 @@
 #include "openmv.h"
 #include "usart.h"
 #include <string.h>
-#include <stdio.h>
 
 #define OPENMV_UART huart3
-#define OPENMV_RX_SIZE 64
+#define OPENMV_RX_SIZE 32
 
 ALIGN_32BYTES(uint8_t openmv_rx_buf[OPENMV_RX_SIZE])
 __attribute__((section(".ARM.__at_0x30000000")));
@@ -40,7 +39,7 @@ static void Parse_OpenMV(uint8_t *data, uint16_t len)
                 // Store data
                 openmv_data.error = temp_err;
                 openmv_data.flag = (OpenMV_Flag_t)temp_flg;
-                openmv_data.is_updated = 1;
+                openmv_data.is_updated = true;
                 openmv_data.last_time = HAL_GetTick();
 
                 return;
@@ -58,8 +57,6 @@ void OpenMV_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
     if (huart->Instance == OPENMV_UART.Instance)
     {
-        SCB_InvalidateDCache_by_Addr((uint32_t *)openmv_rx_buf, OPENMV_RX_SIZE);
-
         Parse_OpenMV(openmv_rx_buf, Size);
 
         HAL_UARTEx_ReceiveToIdle_DMA(&OPENMV_UART, openmv_rx_buf, OPENMV_RX_SIZE);

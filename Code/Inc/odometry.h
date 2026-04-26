@@ -3,7 +3,6 @@
 
 #include "encoder.h"
 #include "bno080.h"
-#include <math.h>
 
 // 轮子直径，单位：米
 #define WHEEL_DIAMETER 0.045f
@@ -15,7 +14,9 @@
 #define ENCODER_PPR 1040.0f
 #define ODO_UPDATE_PERIOD 0.01f // s
 
-#define PI 3.1415926535f
+#ifndef PI
+#define PI 3.14159265358979323846f
+#endif
 
 typedef struct
 {

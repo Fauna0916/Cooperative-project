@@ -2,17 +2,18 @@
 #include "control.h"
 #include "odometry.h"
 #include "math.h"
+#include "stdio.h"
 
 // Task Context Instance
 static Robot_Context_t ctx;
 
 // Speeds for different track sections
-#define CRUISE_SPEED 0.5f    // m/s for straights and wavy lines
-#define BOX_ENTRY_SPEED 0.3f // m/s when approaching 90-deg corners
+#define CRUISE_SPEED 0.3f    // m/s for straights and wavy lines
+#define BOX_ENTRY_SPEED 0.1f // m/s when approaching 90-deg corners
 #define TURN_SPEED 0.0f      // 0.0 means pivot-in-place for IMU turns
 
 // Kinematic Constants
-#define WHEELBASE_OFFSET 0.08f // Distance from camera view center to wheel axis (m)
+#define WHEELBASE_OFFSET 0.20f // Distance from camera view center to wheel axis (m)
 
 void RobotTask_Init(void)
 {
@@ -39,6 +40,13 @@ void RobotTask_Update(OpenMV_Flag_t vision_flag, float vision_error)
         return;
     }
 
+    // recover
+    if (vision_flag != OpenMV_FLAG_LOST && ctx.current_state == MISSION_FAULT_LOST_LINE)
+    {
+        ctx.current_state = MISSION_RUNNING;
+    }
+
+    //printf("state:%d\r\n", ctx.current_state);
     // ---------------------------------------------------------
     // 2. STATE MACHINE
     // ---------------------------------------------------------
@@ -66,6 +74,7 @@ void RobotTask_Update(OpenMV_Flag_t vision_flag, float vision_error)
         }
         else
         {
+
             // Determine speed based on error (Dynamic Throttling)
             float target_speed = CRUISE_SPEED;
             if (fabs(vision_error) > 25.0f)
@@ -75,7 +84,6 @@ void RobotTask_Update(OpenMV_Flag_t vision_flag, float vision_error)
 
             // Pass to your kinematics layer
             Control_SetLineError(target_speed, vision_error);
-
             // TODO: Odometry-based Marker Updating
             // We need to track distance traveled to know when we pass 1.1, 1.2, etc.
             // Example: if(Odometry_GetDistance() > 2.5f) ctx.last_passed_marker = MARKER_1_2;
@@ -111,7 +119,7 @@ void RobotTask_Update(OpenMV_Flag_t vision_flag, float vision_error)
             {
                 // Turn complete. Resume Vision Tracking
                 ctx.current_state = MISSION_RUNNING;
-                Control_SetLineError(CRUISE_SPEED, 0.0f); // Reset OpenMV PID
+                Control_SetLineError(CRUISE_SPEED, vision_error); // Reset OpenMV PID // TODO
             }
         }
         break;

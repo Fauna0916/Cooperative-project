@@ -2,6 +2,7 @@
 #define __OPENMV_H__
 
 #include "main.h"
+#include "stdbool.h"
 
 typedef enum
 {
@@ -14,7 +15,7 @@ typedef struct
 {
     int16_t error;      // 像素偏差值 (-160 到 160)
     OpenMV_Flag_t flag; 
-    uint8_t is_updated; 
+    bool is_updated; 
     uint32_t last_time;
 } OpenMV_Data_t;
 

@@ -11,14 +11,16 @@
 
 PID_PARA *Tuning;
 
-PID_PARA Velocity_loop = {8, 2.75, 0};
+// 20, 2.06, 0.0
+PID_PARA Velocity_loop = {8, 2.75, 0.0};
+
 // PID_PARA Vision_loop = {0.0159, 0.0, 0.054};
 PID_PARA Vision_loop = {0.0264, 0.0, 0.20};
-PID_PARA IMU_loop = {2.69, 0.012, 0.09};
+PID_PARA IMU_loop = {2.71, 0.0, 0.08};
 
 static PID_TypeDef pid_left_motor;
 static PID_TypeDef pid_right_motor;
-static PID_TypeDef pid_line_follow; // 视觉外环 (位置/角度环)
+static PID_TypeDef pid_line_follow;
 static PID_TypeDef pid_imu_heading;
 
 static Control_Mode_t current_mode = CTRL_STOP;
@@ -95,7 +97,7 @@ uint8_t Update_Yaw_Ramp(void)
 
 void Control_Init(void)
 {
-    Tuning = &IMU_loop;
+    Tuning = &Vision_loop;
 
     Motor_Init();
     Encoder_Init();
@@ -170,9 +172,26 @@ void Control_Update(void)
         float penalty = fabs(final_target_w) * CORNERING_PENALTY_COEFF;
         float raw_target = target_linear_v - penalty;
 
-        if (target_linear_v > 0.1f && raw_target < 0.2f)
+        const float MIN_FORWARD_SPEED = 0.15f; // m/s
+
+        if (target_linear_v > 0)
         {
-            raw_target = 0.2f;
+            if (raw_target < MIN_FORWARD_SPEED)
+            {
+                raw_target = MIN_FORWARD_SPEED;
+            }
+        }
+        else if (target_linear_v < 0)
+        {
+            // If we are reversing, ensure we don't accidentally start moving forward
+            if (raw_target > -MIN_FORWARD_SPEED)
+            {
+                raw_target = -MIN_FORWARD_SPEED;
+            }
+        }
+        else
+        {
+            raw_target = 0;
         }
 
         // Apply Ramping
@@ -278,11 +297,12 @@ bool Control_IsHeadingSettled(void)
 
     float current_yaw = Odometry_GetState()->theta;
     float angle_err = WrapAngleError(final_target_yaw, current_yaw);
-    float current_w = Odometry_GetState()->angular_vel; // Assuming odometry tracks w
+    float current_w = Odometry_GetState()->angular_vel;
 
     // If error is less than 2 degrees (0.035 rad) AND robot has mostly stopped spinning
-    if (fabs(angle_err) < 0.035f && fabs(current_w) < 0.1f)
+    if (fabs(angle_err) < 0.175f && fabs(current_w) < 0.1f)
     {
+        printf("settleted\r\n");
         return true;
     }
     return false;

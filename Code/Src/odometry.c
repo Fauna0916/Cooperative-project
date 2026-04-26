@@ -1,9 +1,6 @@
 #include "odometry.h"
 #include <math.h>
 
-#ifndef PI
-#define PI 3.14159265358979323846f
-#endif
 
 static Odometry_State_t odo_state = {0};
 

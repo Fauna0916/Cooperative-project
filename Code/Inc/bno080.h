@@ -9,7 +9,6 @@
 #define BNO_READ_SIZE 32
 #define SENSOR_REPORTID_GAME_ROTATION_VECTOR 0x08
 
-
 typedef enum
 {
     BNO080_IDLE = 0,
@@ -31,5 +30,8 @@ typedef struct
 void BNO080_Init(void);
 BNO080_State_t BNO080_Update(void);
 BNO080_Data_t *BNO080_GetLatestData(void);
+void BNO_EXTI_Callback(uint16_t GPIO_Pin);
+void BNO_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c);
+void BNO_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c);
 
 #endif

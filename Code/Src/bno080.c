@@ -120,3 +120,37 @@ BNO080_Data_t *BNO080_GetLatestData(void)
 {
     return &bno_data;
 }
+
+void BNO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if (GPIO_Pin == BNO_INT_Pin)
+    {
+        if (bno_state == BNO080_IDLE)
+        {
+            bno_state = BNO080_READING;
+            if (HAL_I2C_Master_Receive_DMA(&BNO080_I2C, BNO080_I2C_ADDR, bno_rx_buffer, BNO_READ_SIZE) != HAL_OK)
+            {
+                bno_state = BNO080_ERROR;
+            }
+        }
+    }
+}
+
+void BNO_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+    if (hi2c->Instance == BNO080_I2C.Instance)
+    {
+        if (bno_state == BNO080_READING)
+        {
+            bno_state = BNO080_DATA_READY;
+        }
+    }
+}
+
+void BNO_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
+{
+    if (hi2c->Instance == BNO080_I2C.Instance)
+    {
+        bno_state = BNO080_ERROR;
+    }
+}

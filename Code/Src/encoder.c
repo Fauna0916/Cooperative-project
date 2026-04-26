@@ -92,6 +92,6 @@ float Encoder_GetAngularVelocity(void)
     float v_l = left->speed_rpm * factor;
     float v_r = right->speed_rpm * factor;
 
-    // 根据你的定义：右轮快于左轮为正（左转）
+    // 右轮快于左轮为正（左转）
     return (v_r - v_l) / TRACK_WIDTH;
 }

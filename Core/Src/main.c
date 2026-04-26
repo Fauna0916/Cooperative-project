@@ -32,6 +32,7 @@
 #include "utils.h"
 #include "bno080.h"
 #include "openmv.h"
+#include "odometry.h"
 #include "robot_task.h"
 /* USER CODE END Includes */
 
@@ -123,31 +124,48 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   /* USER CODE BEGIN 2 */
-  // HAL_Delay(2000);
+  RobotTask_Start();
 
   /* USER CODE END 2 */
   while (1)
   {
-    if (OpenMV_GetData()->is_updated)
-    {
-      OpenMV_GetData()->is_updated = 0;
+    Control_SetVelocity(0.7f, 0.0);
+    // if(OpenMV_GetData()->is_updated)
+    // {
+    //   OpenMV_GetData()->is_updated = 0;
+    //   Control_SetLineError(0.0f, OpenMV_GetData()->error);
+    //   printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
+    // }
 
-      RobotTask_Update(OpenMV_GetData()->flag, OpenMV_GetData()->error);
-      // if (OpenMV_FLAG_NORMAL == OpenMV_GetData()->flag)
-      // {
-      //   Control_SetLineError(0.3f, OpenMV_GetData()->error);
-      // }
-      // else if (OpenMV_FLAG_LOST == OpenMV_GetData()->flag)
-      // {
-      //   Control_SetLineError(0.0f, OpenMV_GetData()->error);
-      // }
+    // if (OpenMV_GetData()->is_updated)
+    // {
+    //   OpenMV_GetData()->is_updated = 0;
+    //   if (OpenMV_GetData()->flag == OpenMV_FLAG_LOST)
+    //   {
+    //     RobotTask_Update(OpenMV_FLAG_LOST, 0);
+    //   }
+    //   else
+    //   {
+    //     RobotTask_Update(OpenMV_GetData()->flag, OpenMV_GetData()->error);
+    //   }
+    // }
 
-      printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
-    }
-    else
-    {
-      RobotTask_Update(OpenMV_FLAG_LOST, 0);
-    }
+    // }
+    // else
+    // {
+    //  // RobotTask_Update(OpenMV_FLAG_LOST, 0);
+    //   // printf("stop2\r\n");
+    //   // Control_Stop();
+    // }
+
+    // if (OpenMV_FLAG_NORMAL == OpenMV_GetData()->flag)
+    // {
+    //   Control_SetLineError(0.3f, OpenMV_GetData()->error);
+    // }
+    // else if (OpenMV_FLAG_LOST == OpenMV_GetData()->flag)
+    // {
+    //   Control_SetLineError(0.0f, OpenMV_GetData()->error);
+    // }
 
     // if (HAL_GetTick() % 8000 < 2000)
     // {
@@ -166,7 +184,20 @@ int main(void)
     //   Control_SetIMUHeading(0.0f, 0);
     // }
 
-    // debug_info();
+    // if (HAL_GetTick() % 6000 < 2000)
+    // {
+    //   Control_SetVelocity(0.7f, 0.0);
+    // }
+    // else if (HAL_GetTick() % 6000 < 4000)
+    // {
+    //   Control_SetVelocity(0.0f, 0.0);
+    // }
+    // else
+    // {
+    //   Control_SetVelocity(-0.7f, 0.0);
+    // }
+
+    //debug_info();
 
     if (BNO080_READY_TO_READ == BNO080_Update())
     {
