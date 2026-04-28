@@ -9,5 +9,7 @@ void I2C_VerifyCommunication(I2C_HandleTypeDef *device_I2C, uint16_t device_addr
 void debug_info(void);
 void Tuning_Init(void);
 void TUNING_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size);
+float Math_NormalizeAngle(float angle);
+float Math_NormalizeAngleError(float target, float current);
 
 #endif

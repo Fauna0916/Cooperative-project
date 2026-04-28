@@ -1,6 +1,6 @@
 #include "odometry.h"
 #include <math.h>
-
+#include "utils.h"
 
 static Odometry_State_t odo_state = {0};
 
@@ -13,27 +13,6 @@ extern BNO080_State_t bno_state;
 static float last_bno_yaw = 0.0f;
 static uint8_t is_first_run = 1;
 
-/**
- * @brief  Wraps the given angle to the range [-PI, PI].
- */
-static inline float Math_NormalizeAngle(float angle)
-{
-    float a = fmodf(angle + PI, 2.0f * PI);
-    if (a < 0)
-        a += 2.0f * PI;
-    return a - PI;
-}
-
-/**
- * @brief  Calculates the shortest-path angle error between target and current.
- * @note   Used for PID error or delta calculations to prevent "long-way-around"
- *         rotations (e.g., from 179 deg to -179 deg).
- */
-static inline float Math_NormalizeAngleError(float target, float current)
-{
-    float err = target - current;
-    return Math_NormalizeAngle(err);
-}
 
 void Odometry_Init(float start_x, float start_y, float start_theta)
 {
@@ -55,7 +34,6 @@ void Odometry_Init(float start_x, float start_y, float start_theta)
     // Synchronize IMU yaw with the robot's starting orientation
     yaw_offset = BNO080_GetLatestData()->yaw - start_theta;
 }
-
 
 void Odometry_Update(void)
 {

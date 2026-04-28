@@ -3,6 +3,7 @@
 
 #include "openmv.h"
 #include "control.h"
+#include "map.h"
 
 typedef enum
 {
@@ -13,18 +14,6 @@ typedef enum
     MISSION_FINISHED
 } Mission_State_t;
 
-// --- Track Markers (Checkpoints) ---
-typedef enum
-{
-    MARKER_START = 0,
-    MARKER_1_1,
-    MARKER_1_2,
-    MARKER_1_3,
-    MARKER_1_4,
-    MARKER_1_5
-} Track_Marker_t;
-
-// --- Task Context Structure ---
 typedef struct
 {
     Mission_State_t current_state;
@@ -35,6 +24,11 @@ typedef struct
     uint32_t corner_start_time;
     uint8_t corner_step; // 0 = forward offset, 1 = IMU turn
 
+    uint8_t corner_1_3_cnt;
+
+    // search
+    uint8_t search_step;   // 0:停止记录, 1:左转, 2:右转, 3:回中, 4:彻底放弃
+    float search_base_yaw; // 丢失线时的基础航向
 } Robot_Context_t;
 
 void RobotTask_Init(void);

@@ -129,7 +129,8 @@ int main(void)
   /* USER CODE END 2 */
   while (1)
   {
-    Control_SetVelocity(0.7f, 0.0);
+    // Control_SetLineError(0.3f, OpenMV_GetData()->error);
+    // printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
     // if(OpenMV_GetData()->is_updated)
     // {
     //   OpenMV_GetData()->is_updated = 0;
@@ -137,18 +138,21 @@ int main(void)
     //   printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
     // }
 
-    // if (OpenMV_GetData()->is_updated)
-    // {
-    //   OpenMV_GetData()->is_updated = 0;
-    //   if (OpenMV_GetData()->flag == OpenMV_FLAG_LOST)
-    //   {
-    //     RobotTask_Update(OpenMV_FLAG_LOST, 0);
-    //   }
-    //   else
-    //   {
-    //     RobotTask_Update(OpenMV_GetData()->flag, OpenMV_GetData()->error);
-    //   }
-    // }
+    if (OpenMV_GetData()->is_updated)
+    {
+      OpenMV_GetData()->is_updated = 0;
+      RobotTask_Update(OpenMV_GetData()->flag, OpenMV_GetData()->error);
+      // RobotTask_Update(OpenMV_FLAG_CORNER_LEFT, OpenMV_GetData()->error);
+      // printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
+      // if (OpenMV_GetData()->flag == OpenMV_FLAG_LOST)
+      // {
+      //   RobotTask_Update(OpenMV_FLAG_LOST, 0);
+      // }
+      // else
+      // {
+      //   RobotTask_Update(OpenMV_GetData()->flag, OpenMV_GetData()->error);
+      // }
+    }
 
     // }
     // else
@@ -197,7 +201,7 @@ int main(void)
     //   Control_SetVelocity(-0.7f, 0.0);
     // }
 
-    //debug_info();
+    debug_info();
 
     if (BNO080_READY_TO_READ == BNO080_Update())
     {

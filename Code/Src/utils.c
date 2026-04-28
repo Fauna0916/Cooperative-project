@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "string.h"
 #include "odometry.h"
+#include "openmv.h"
 
 uint8_t debug_flag = 0;
 
@@ -37,10 +38,16 @@ void debug_info(void)
         // printf("right:%d\r\n", Encoder_GetRightData()->speed_rpm);
         // printf("x:%.1f,y:%.1f,theta:%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->theta);
         // printf("[Enc] v:%.3f,w:%.3f\r\n", Encoder_GetLinearVelocity(), Encoder_GetAngularVelocity());
-        //printf("[Odo] v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);
-        printf("YPR: %.1f %.1f %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f,
-               BNO080_GetLatestData()->pitch * 57.29578f,
-               BNO080_GetLatestData()->roll * 57.29578f);
+        // printf("[Odo] v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);
+        // printf("YPR: %.1f %.1f %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f,
+        //        BNO080_GetLatestData()->pitch * 57.29578f,
+        //        BNO080_GetLatestData()->roll * 57.29578f);
+        static uint8_t corner_cnt = 0;
+        if (OpenMV_GetData()->flag == OpenMV_FLAG_CORNER_LEFT || OpenMV_GetData()->flag == OpenMV_FLAG_CORNER_RIGHT)
+        {
+            corner_cnt++;
+            printf("%d, %.1f\r\n", corner_cnt, Odometry_GetState()->distance);
+        }
     }
 }
 
@@ -90,4 +97,27 @@ void TUNING_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         HAL_UARTEx_ReceiveToIdle_DMA(&huart2, rx_buffer, RX_BUF_SIZE);
         __HAL_DMA_DISABLE_IT(huart2.hdmarx, DMA_IT_HT);
     }
+}
+
+/**
+ * @brief  Wraps the given angle to the range [-PI, PI].
+ */
+float Math_NormalizeAngle(float angle)
+{
+
+    float a = fmodf(angle + PI, 2.0f * PI);
+    if (a < 0)
+        a += 2.0f * PI;
+    return a - PI;
+}
+
+/**
+ * @brief  Calculates the shortest-path angle error between target and current.
+ * @note   Used for PID error or delta calculations to prevent "long-way-around"
+ *         rotations (e.g., from 179 deg to -179 deg).
+ */
+float Math_NormalizeAngleError(float target, float current)
+{
+    float err = target - current;
+    return Math_NormalizeAngle(err);
 }

@@ -1104,6 +1104,16 @@
               <FileType>5</FileType>
               <FilePath>..\Code\Inc\robot_task.h</FilePath>
             </File>
+            <File>
+              <FileName>map.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Code\Src\map.c</FilePath>
+            </File>
+            <File>
+              <FileName>map.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Code\Inc\map.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

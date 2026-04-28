@@ -11,12 +11,15 @@
 
 PID_PARA *Tuning;
 
-// 20, 2.06, 0.0
-PID_PARA Velocity_loop = {8, 2.75, 0.0};
+
+// PID_PARA Velocity_loop = {8, 2.75, 0.0};    //outdoors
+PID_PARA Velocity_loop = {20, 2.06, 0.0};   //indoors
 
 // PID_PARA Vision_loop = {0.0159, 0.0, 0.054};
-PID_PARA Vision_loop = {0.0264, 0.0, 0.20};
-PID_PARA IMU_loop = {2.71, 0.0, 0.08};
+// PID_PARA Vision_loop = {0.0264, 0.0, 0.20};
+PID_PARA Vision_loop = {0.0215, 0.0, 0.045};
+
+PID_PARA IMU_loop = {2.71, 0.0, 0.08};  //outdorrs
 
 static PID_TypeDef pid_left_motor;
 static PID_TypeDef pid_right_motor;
@@ -38,15 +41,6 @@ static float ramp_target_yaw = 0.0f;  // The moving target the PID follows
 static float final_target_yaw = 0.0f; // The ultimate destination
 static float yaw_ramp_step = 0.01f;   // How much the angle increases per 10ms (Speed)
 
-static float WrapAngleError(float target, float current)
-{
-    float error = target - current;
-    while (error > PI)
-        error -= 2.0f * PI;
-    while (error < -PI)
-        error += 2.0f * PI;
-    return error;
-}
 
 static float Velocity_Ramp(float target, float current)
 {
@@ -70,7 +64,7 @@ static float Velocity_Ramp(float target, float current)
  */
 uint8_t Update_Yaw_Ramp(void)
 {
-    float error = WrapAngleError(final_target_yaw, ramp_target_yaw);
+    float error = Math_NormalizeAngleError(final_target_yaw, ramp_target_yaw);
 
     if (fabs(error) < yaw_ramp_step)
     {
@@ -86,10 +80,8 @@ uint8_t Update_Yaw_Ramp(void)
             ramp_target_yaw -= yaw_ramp_step;
 
         // Keep ramp_target in -PI to PI range
-        if (ramp_target_yaw > PI)
-            ramp_target_yaw -= 2.0f * PI;
-        if (ramp_target_yaw < -PI)
-            ramp_target_yaw += 2.0f * PI;
+        ramp_target_yaw = Math_NormalizeAngle(ramp_target_yaw);
+
 
         return 0; // Still moving
     }
@@ -202,7 +194,7 @@ void Control_Update(void)
     {
         Update_Yaw_Ramp();
 
-        float angle_err = WrapAngleError(ramp_target_yaw, Odometry_GetState()->theta);
+        float angle_err = Math_NormalizeAngleError(ramp_target_yaw, Odometry_GetState()->theta);
         final_target_w = PID_Compute(&pid_imu_heading, 0.0f, -angle_err);
 
         current_smoothed_v = Velocity_Ramp(target_linear_v, current_smoothed_v);
@@ -266,13 +258,10 @@ void Control_SetLineError(float base_linear_vel, float openmv_error)
 
 void Control_SetIMUHeading(float linear_vel, float target_yaw)
 {
-    while (target_yaw > PI)
-        target_yaw -= 2.0f * PI;
-    while (target_yaw < -PI)
-        target_yaw += 2.0f * PI;
+    target_yaw = Math_NormalizeAngle(target_yaw);
 
     // Only clear the PID if we are JUST transitioning into this mode
-    if (current_mode != CTRL_IMU_HEADING || fabs(WrapAngleError(target_yaw, final_target_yaw)) > 0.02f)
+    if (current_mode != CTRL_IMU_HEADING || fabs(Math_NormalizeAngleError(target_yaw, final_target_yaw)) > 0.02f)
     {
         PID_Clear(&pid_imu_heading);
         ramp_target_yaw = Odometry_GetState()->theta;
@@ -296,11 +285,11 @@ bool Control_IsHeadingSettled(void)
         return false;
 
     float current_yaw = Odometry_GetState()->theta;
-    float angle_err = WrapAngleError(final_target_yaw, current_yaw);
+    float angle_err = Math_NormalizeAngleError(final_target_yaw, current_yaw);
     float current_w = Odometry_GetState()->angular_vel;
 
     // If error is less than 2 degrees (0.035 rad) AND robot has mostly stopped spinning
-    if (fabs(angle_err) < 0.175f && fabs(current_w) < 0.1f)
+    if (fabs(angle_err) < 0.105f && fabs(current_w) < 0.1f)
     {
         printf("settleted\r\n");
         return true;
