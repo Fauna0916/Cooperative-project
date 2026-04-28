@@ -42,12 +42,6 @@ void debug_info(void)
         // printf("YPR: %.1f %.1f %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f,
         //        BNO080_GetLatestData()->pitch * 57.29578f,
         //        BNO080_GetLatestData()->roll * 57.29578f);
-        static uint8_t corner_cnt = 0;
-        if (OpenMV_GetData()->flag == OpenMV_FLAG_CORNER_LEFT || OpenMV_GetData()->flag == OpenMV_FLAG_CORNER_RIGHT)
-        {
-            corner_cnt++;
-            printf("%d, %.1f\r\n", corner_cnt, Odometry_GetState()->distance);
-        }
     }
 }
 

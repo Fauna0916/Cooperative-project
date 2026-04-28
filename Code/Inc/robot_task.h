@@ -9,7 +9,6 @@ typedef enum
 {
     MISSION_IDLE = 0,
     MISSION_RUNNING,
-    MISSION_CORNERING,       // Executing a 90-deg box turn
     MISSION_FAULT_LOST_LINE, // Waiting for human placement
     MISSION_FINISHED
 } Mission_State_t;
@@ -33,7 +32,7 @@ typedef struct
 
 void RobotTask_Init(void);
 void RobotTask_Start(void);
-void RobotTask_Update(OpenMV_Flag_t vision_flag, float vision_error);
+void RobotTask_Update(OpenMV_Data_t *omv);
 void RobotTask_AcknowledgePlacement(void); // Called by EXTI User Button
 
 #endif

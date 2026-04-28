@@ -141,7 +141,7 @@ int main(void)
     if (OpenMV_GetData()->is_updated)
     {
       OpenMV_GetData()->is_updated = 0;
-      RobotTask_Update(OpenMV_GetData()->flag, OpenMV_GetData()->error);
+      RobotTask_Update(OpenMV_GetData());
       // RobotTask_Update(OpenMV_FLAG_CORNER_LEFT, OpenMV_GetData()->error);
       // printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
       // if (OpenMV_GetData()->flag == OpenMV_FLAG_LOST)

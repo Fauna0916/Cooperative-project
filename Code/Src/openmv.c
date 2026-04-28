@@ -8,7 +8,7 @@
 ALIGN_32BYTES(uint8_t openmv_rx_buf[OPENMV_RX_SIZE])
 __attribute__((section(".ARM.__at_0x30000000")));
 
-static OpenMV_Data_t openmv_data = {0, OpenMV_FLAG_NORMAL, 0, 0};
+static OpenMV_Data_t openmv_data = {0};
 
 void OpenMV_Init(void)
 {
@@ -18,31 +18,37 @@ void OpenMV_Init(void)
 
 static void Parse_OpenMV(uint8_t *data, uint16_t len)
 {
-    if (len < 5)
+    // 新协议总长度为 9 字节
+    if (len < 9)
         return;
 
-    // Loop through the buffer to find the header
-    for (uint16_t i = 0; i <= (len - 5); i++)
+    // 寻找包头 0xAA
+    for (uint16_t i = 0; i <= (len - 9); i++)
     {
         if (data[i] == 0xAA)
         {
-            // Calculate checksum (uint8_t handles the 8-bit wrap-around/mask automatically)
-            uint8_t sum = data[i] + data[i + 1] + data[i + 2] + data[i + 3];
-
-            // Check against the received checksum byte
-            if (sum == data[i + 4])
+            // 校验和计算 (sum(byte 0 到 byte 7))
+            uint8_t sum = 0;
+            for (int j = 0; j < 8; j++)
             {
-                // data[i+1] is Low Byte, data[i+2] is High Byte
-                int16_t temp_err = (int16_t)((uint16_t)data[i + 2] << 8 | data[i + 1]);
-                uint8_t temp_flg = data[i + 3];
+                sum += data[i + j];
+            }
 
-                // Store data
-                openmv_data.error = temp_err;
-                openmv_data.flag = (OpenMV_Flag_t)temp_flg;
+            // 对比第 9 个字节 (data[i+8])
+            if (sum == data[i + 8])
+            {
+                // 解析标志位
+                openmv_data.flag = data[i + 1];
+
+                // 解析三个 int16_t 误差 (低位在前，高位在后)
+                openmv_data.err_f = (int16_t)((uint16_t)data[i + 3] << 8 | data[i + 2]);
+                openmv_data.err_l = (int16_t)((uint16_t)data[i + 5] << 8 | data[i + 4]);
+                openmv_data.err_r = (int16_t)((uint16_t)data[i + 7] << 8 | data[i + 6]);
+
                 openmv_data.is_updated = true;
                 openmv_data.last_time = HAL_GetTick();
 
-                return;
+                return; // 解析成功，退出
             }
         }
     }

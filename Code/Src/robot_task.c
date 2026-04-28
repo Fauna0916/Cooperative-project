@@ -14,8 +14,11 @@ static Robot_Context_t ctx;
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
-// Kinematic Constants
-#define WHEELBASE_OFFSET 0.185f // Distance from camera view center to wheel axis (m)
+// 记录全局的路口数量
+static uint8_t junction_count = 0;
+// 路口锁：防止在一个物理路口内，因为连续多帧视觉识别而重复决策
+static bool is_in_junction = false;
+static OpenMV_Possible_Direction_t locked_direction = Direction_NORMAL;
 
 void RobotTask_Init(void)
 {
@@ -40,7 +43,7 @@ static float dynamic_throttling(float vision_error)
 
 static uint8_t line_stable_count = 0;
 
-void RobotTask_Update(OpenMV_Flag_t vision_flag, float vision_error)
+void RobotTask_Update(OpenMV_Data_t *omv)
 {
     // ---------------------------------------------------------
     // 1. FAULT DETECTION
@@ -48,7 +51,7 @@ void RobotTask_Update(OpenMV_Flag_t vision_flag, float vision_error)
     if (ctx.current_state == MISSION_FAULT_LOST_LINE)
     {
         // 只有看到 NORMAL 且 误差在可控范围内（比如线不在画面最边缘）
-        if (vision_flag == OpenMV_FLAG_NORMAL && fabs(vision_error) < 65.0f)
+        if (omv->flag != 0xFF && fabs(omv->err_f) < 65.0f)
         {
             line_stable_count++;
             // 必须连续 3 帧（约 30-50ms）看到线，才认为恢复成功
@@ -56,7 +59,7 @@ void RobotTask_Update(OpenMV_Flag_t vision_flag, float vision_error)
             {
                 ctx.current_state = MISSION_RUNNING;
                 // 恢复瞬间使用较慢的慢速，给 PID 锁定的时间，防止甩尾
-                Control_SetLineError(BOX_ENTRY_SPEED, vision_error);
+                Control_SetLineError(BOX_ENTRY_SPEED, omv->err_f);
                 return;
             }
         }
@@ -82,6 +85,7 @@ void RobotTask_Update(OpenMV_Flag_t vision_flag, float vision_error)
         Control_Stop();
         break;
     case MISSION_FAULT_LOST_LINE:
+        Control_Stop(); // TODO: temp, should be deleted
         // --- 原地搜索状态机 ---
         // switch (ctx.search_step)
         // {
@@ -131,106 +135,60 @@ void RobotTask_Update(OpenMV_Flag_t vision_flag, float vision_error)
         break;
 
     case MISSION_RUNNING:
-        if (vision_flag == OpenMV_FLAG_LOST)
+        // 1. 彻底丢线
+        if (omv->flag == 0xFF) // TrackFlag.LOST
         {
             ctx.current_state = MISSION_FAULT_LOST_LINE;
             ctx.search_step = 0;
             ctx.search_base_yaw = Odometry_GetState()->theta;
             line_stable_count = 0;
+            is_in_junction = false; // 重置路口锁
         }
-        // --- Normal Line Following ---
-        // Detect upcoming corners
-        else if (vision_flag == OpenMV_FLAG_CORNER_LEFT || vision_flag == OpenMV_FLAG_CORNER_RIGHT)
-        { 
-            if (ctx.last_passed_marker == MARKER_1_3)
+        // 2. 遇到岔路口 (0x10 系列)
+        else if ((omv->flag & 0xF0) == 0x10)
+        {
+            // 如果是刚进入这个路口，进行唯一一次路径决策
+            if (!is_in_junction)
             {
-                ctx.corner_1_3_cnt = 0;
-                ctx.corner_1_3_cnt++;
-                if (ctx.corner_1_3_cnt == 1)
-                {
-                    Control_SetLineError(CRUISE_SPEED, vision_error);
-                }
-                else
-                {
-                    ctx.corner_1_3_cnt = 0;
-                    // Query the Distance-Gated Map
-                    Turn_Direction_t map_dir = Get_Distance_Gated_Turn(vision_flag, ctx.last_passed_marker);
-
-                    // 1. Trust the Map over the OpenMV
-                    float target_yaw = Odometry_GetState()->theta + (map_dir * (PI / 2.0f)); // TODO integrat map_dir and openmv flag
-                    // 2. Setup corner sequence
-                    ctx.target_corner_yaw = target_yaw;
-
-                    ctx.corner_step = 0;
-                    ctx.current_state = MISSION_CORNERING;
-                }
+                locked_direction = Decide_Shortest_Path(omv->flag, &junction_count);
+                is_in_junction = true;
             }
-            else
+
+            // 根据决策结果，挑选对应的误差喂给 PID
+            float selected_error = 0.0f;
+            switch (locked_direction)
             {
-                // Query the Distance-Gated Map
-                Turn_Direction_t map_dir = Get_Distance_Gated_Turn(vision_flag, ctx.last_passed_marker);
-
-                if (map_dir != TURN_NONE)
-                {
-                    // 1. Trust the Map over the OpenMV
-                    float target_yaw = Odometry_GetState()->theta + (map_dir * (PI / 2.0f)); // TODO integrat map_dir and openmv flag
-                    // 2. Setup corner sequence
-                    ctx.target_corner_yaw = target_yaw;
-
-                    ctx.corner_step = 0;
-                    ctx.current_state = MISSION_CORNERING;
-                }
-                else
-                {
-                    // OpenMV saw a corner, but map says no! Ignore it and keep following line.
-                    Control_SetLineError(CRUISE_SPEED, vision_error);
-                }
+            case Direction_LEFT:
+                selected_error = omv->err_l;
+                break;
+            case Direction_RIGHT:
+                selected_error = omv->err_r;
+                break;
+            case Direction_FORWARD:
+            case Direction_NORMAL:
+            default:
+                selected_error = omv->err_f;
+                break;
             }
+
+            // 使用视觉巡线 PID 顺着选定的线转弯
+            // 建议转弯时速度稍降，防止由于视觉延迟冲出赛道
+            Control_SetLineError(BOX_ENTRY_SPEED, selected_error);
         }
+        // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
         else
         {
-
-            // Determine speed based on error (Dynamic Throttling)
-            float target_speed = dynamic_throttling(vision_error);
-
-            Control_SetLineError(target_speed, vision_error);
-            // TODO: Odometry-based Marker Updating
-            // We need to track distance traveled to know when we pass 1.1, 1.2, etc.
-            // Example: if(Odometry_GetDistance() > 2.5f) ctx.last_passed_marker = MARKER_1_2;
-        }
-        break;
-
-    case MISSION_CORNERING:
-        // --- 90-Degree Box Turn Sequence ---
-
-        // Step 0: The camera sees the corner early. The wheels are not on the intersection yet.
-        // We must drive forward slightly (blindly) so the wheels align with the corner.
-        if (ctx.corner_step == 0)
-        {
-            static float start_dist = 0;
-            if (start_dist == 0)
-                start_dist = Odometry_GetState()->distance;
-
-            Control_SetVelocity(BOX_ENTRY_SPEED, 0.0f); // Drive straight blind
-
-            if (Odometry_GetState()->distance - start_dist >= WHEELBASE_OFFSET)
+            // 离开路口，解除锁定
+            if (is_in_junction)
             {
-                start_dist = 0;
-                ctx.corner_step = 1;
+                is_in_junction = false;
+            }
 
-                // Trigger the IMU Turn
-                Control_SetIMUHeading(TURN_SPEED, ctx.target_corner_yaw);
-            }
-        }
-        // Step 1: Wait for IMU PID to settle
-        else if (ctx.corner_step == 1)
-        {
-            if (Control_IsHeadingSettled())
-            {
-                // Turn complete. Resume Vision Tracking
-                ctx.current_state = MISSION_RUNNING;
-                Control_SetLineError(CRUISE_SPEED, vision_error); // Reset OpenMV PID // TODO
-            }
+            // 动态限速：误差越大速度越慢
+            float target_speed = dynamic_throttling(omv->err_f);
+
+            // 默认跟随 err_f
+            Control_SetLineError(CRUISE_SPEED, omv->err_f);
         }
         break;
     }

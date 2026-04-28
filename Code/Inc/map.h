@@ -28,6 +28,7 @@ typedef enum
 #define DIST_MARKER_1_5 8.5f
 
 Track_Marker_t Marker_update(void);
-Turn_Direction_t Get_Distance_Gated_Turn(OpenMV_Flag_t dir, Track_Marker_t current_marker);
+OpenMV_Possible_Direction_t Decide_Shortest_Path(uint8_t junction_flag, uint8_t *junction_count);
 
 #endif
+

@@ -11,15 +11,14 @@
 
 PID_PARA *Tuning;
 
-
 // PID_PARA Velocity_loop = {8, 2.75, 0.0};    //outdoors
-PID_PARA Velocity_loop = {20, 2.06, 0.0};   //indoors
+PID_PARA Velocity_loop = {20, 2.06, 0.0}; // indoors
 
 // PID_PARA Vision_loop = {0.0159, 0.0, 0.054};
 // PID_PARA Vision_loop = {0.0264, 0.0, 0.20};
 PID_PARA Vision_loop = {0.0215, 0.0, 0.045};
 
-PID_PARA IMU_loop = {2.71, 0.0, 0.08};  //outdorrs
+PID_PARA IMU_loop = {2.71, 0.0, 0.08}; // outdorrs
 
 static PID_TypeDef pid_left_motor;
 static PID_TypeDef pid_right_motor;
@@ -40,7 +39,6 @@ static float current_smoothed_v = 0.0f; // Persistent state for ramping
 static float ramp_target_yaw = 0.0f;  // The moving target the PID follows
 static float final_target_yaw = 0.0f; // The ultimate destination
 static float yaw_ramp_step = 0.01f;   // How much the angle increases per 10ms (Speed)
-
 
 static float Velocity_Ramp(float target, float current)
 {
@@ -81,7 +79,6 @@ uint8_t Update_Yaw_Ramp(void)
 
         // Keep ramp_target in -PI to PI range
         ramp_target_yaw = Math_NormalizeAngle(ramp_target_yaw);
-
 
         return 0; // Still moving
     }
