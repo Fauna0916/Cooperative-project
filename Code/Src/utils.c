@@ -39,7 +39,8 @@ void debug_info(void)
         //printf("x:%.1f,y:%.1f,radian:%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->theta);
         // // printf("[Enc] v:%.3f,w:%.3f\r\n", Encoder_GetLinearVelocity(), Encoder_GetAngularVelocity());
         // printf("[Odo] v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);
-       // printf("Yaw: %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f);
+        //printf("[Odo] dis:%.3f\r\n", Odometry_GetState()->distance);
+        printf("Yaw: %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f);
     }
 }
 

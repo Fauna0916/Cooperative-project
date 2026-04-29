@@ -31,6 +31,23 @@ typedef struct
     float search_base_yaw; // 丢失线时的基础航向
 } Robot_Context_t;
 
+typedef enum
+{
+    TURN_IDLE = 0,
+    TURN_MOVE_FORWARD,
+    TURN_IMU_SPIN,
+    TURN_MOVE_BACKWARD,
+    TURN_DONE
+} Turn_Step_t;
+
+typedef struct
+{
+    Turn_Step_t step;
+    float target_yaw;
+    float start_dist;
+    bool is_initialized;
+} Corner_Sequence_t;
+
 void RobotTask_Init(void);
 void RobotTask_Start(void);
 void RobotTask_Update(OpenMV_Data_t *omv);

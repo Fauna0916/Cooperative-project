@@ -8,7 +8,7 @@
 #define MAX_LINEAR_VELOCITY 1.5f
 #define MAX_ANGULAR_VELOCITY 6.0f
 #define CORNERING_PENALTY_COEFF (0.15f)
-#define HEADING_SETTLE_TIMEOUT 500 // 500ms
+#define HEADING_SETTLE_TIMEOUT 2000 // ms
 
 PID_PARA *Tuning;
 
@@ -283,6 +283,15 @@ bool Control_IsHeadingSettled(void)
     if (current_mode != CTRL_IMU_HEADING)
         return false;
 
+    static uint32_t start_tick = 0;
+    static float last_target = -999.0f;
+
+    if (last_target != final_target_yaw)
+    {
+        start_tick = HAL_GetTick();
+        last_target = final_target_yaw;
+    }
+
     float current_yaw = Odometry_GetState()->theta;
     float angle_err = Math_NormalizeAngleError(final_target_yaw, current_yaw);
     float current_w = Odometry_GetState()->angular_vel;
@@ -291,6 +300,14 @@ bool Control_IsHeadingSettled(void)
     if (fabs(angle_err) < 0.105f && fabs(current_w) < 0.1f)
     {
         printf("settleted\r\n");
+        start_tick = 0;
+        return true;
+    }
+
+    // timeout
+    if (HAL_GetTick() - start_tick > HEADING_SETTLE_TIMEOUT)
+    {
+        start_tick = 0;
         return true;
     }
     return false;
