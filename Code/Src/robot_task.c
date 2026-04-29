@@ -14,11 +14,10 @@ static Robot_Context_t ctx;
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
-// 记录全局的路口数量
-static uint8_t junction_count = 0;
+
 // 路口锁：防止在一个物理路口内，因为连续多帧视觉识别而重复决策
 static bool is_in_junction = false;
-static OpenMV_Possible_Direction_t locked_direction = Direction_NORMAL;
+static OpenMV_Possible_Direction_t chosen_direction = Direction_NORMAL;
 
 void RobotTask_Init(void)
 {
@@ -150,13 +149,13 @@ void RobotTask_Update(OpenMV_Data_t *omv)
             // 如果是刚进入这个路口，进行唯一一次路径决策
             if (!is_in_junction)
             {
-                locked_direction = Decide_Shortest_Path(omv->flag, &junction_count);
+                chosen_direction = Decide_Shortest_Path(omv->flag);
                 is_in_junction = true;
             }
 
             // 根据决策结果，挑选对应的误差喂给 PID
             float selected_error = 0.0f;
-            switch (locked_direction)
+            switch (chosen_direction)
             {
             case Direction_LEFT:
                 selected_error = omv->err_l;
@@ -171,9 +170,9 @@ void RobotTask_Update(OpenMV_Data_t *omv)
                 break;
             }
 
-            // 使用视觉巡线 PID 顺着选定的线转弯
-            // 建议转弯时速度稍降，防止由于视觉延迟冲出赛道
-            Control_SetLineError(BOX_ENTRY_SPEED, selected_error);
+            float dynamic_speed = dynamic_throttling(selected_error);
+
+            Control_SetLineError(dynamic_speed, selected_error);
         }
         // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
         else
@@ -185,10 +184,10 @@ void RobotTask_Update(OpenMV_Data_t *omv)
             }
 
             // 动态限速：误差越大速度越慢
-            float target_speed = dynamic_throttling(omv->err_f);
+            float dynamic_speed = dynamic_throttling(omv->err_f);
 
             // 默认跟随 err_f
-            Control_SetLineError(CRUISE_SPEED, omv->err_f);
+            Control_SetLineError(dynamic_speed, omv->err_f);
         }
         break;
     }

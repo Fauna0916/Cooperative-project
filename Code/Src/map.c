@@ -2,6 +2,8 @@
 #include "utils.h"
 #include "odometry.h"
 
+#define X_MOVE_WEIGHT 0.30f // X轴移动权重 30cm
+#define Y_MOVE_WEIGHT 0.50f // Y轴移动权重 50cm
 
 float Predict_Target_Theta(float current_theta, OpenMV_Possible_Direction_t action)
 {
@@ -14,7 +16,7 @@ float Predict_Target_Theta(float current_theta, OpenMV_Possible_Direction_t acti
     return current_theta;
 }
 
-OpenMV_Possible_Direction_t Decide_Shortest_Path(uint8_t junction_flag, uint8_t* junction_count)
+OpenMV_Possible_Direction_t Decide_Shortest_Path(uint8_t junction_flag)
 {
     // 如果不是路口，直接返回 NORMAL
     if ((junction_flag & 0xF0) != 0x10)
@@ -33,46 +35,32 @@ OpenMV_Possible_Direction_t Decide_Shortest_Path(uint8_t junction_flag, uint8_t*
     // 如果解码错误，默认往前走
     if (dir_count == 0) return Direction_FORWARD;
 
-    // 进入新路口，计数器+1
-    (*junction_count)++;
+    float sign_x = (Odometry_GetState()->x >= 0) ? 1.0f : -1.0f;
+    float sign_y = (Odometry_GetState()->y >= 0) ? 1.0f : -1.0f;
+
     OpenMV_Possible_Direction_t best_choice = available_dirs[0];
 
-    // --- 决策逻辑 1：第一个路口 (1.2点处寻求“归心”，最大化 X 轴移动) ---
-    if ((*junction_count) == 1)
-    {
-        float max_x_impact = -1.0f;
+   float max_score = -999.0f;
 
-        for (uint8_t i = 0; i < dir_count; i++)
-        {
-            float target_theta = Predict_Target_Theta(Odometry_GetState()->theta, available_dirs[i]);
-            // 计算该方向产生的 X 轴位移趋势 (cos)，期望远离起点 x=0
-            float x_trend = fabsf(cosf(target_theta));
+   for (uint8_t i = 0; i < dir_count; i++)
+   {
+       // 1. 使用你提供的预测函数获取该动作后的朝向
+       float pred_theta = Predict_Target_Theta(Odometry_GetState()->theta, available_dirs[i]);
 
-            if (x_trend > max_x_impact)
-            {
-                max_x_impact = x_trend;
-                best_choice = available_dirs[i];
-            }
-        }
-    }
-    // --- 决策逻辑 2：后续路口 (1.3点及以后寻求“向上”，最大化 Y 轴移动) ---
-    else
-    {
-        float max_y_trend = -2.0f; 
+       // 2. 计算该朝向在 X/Y 上的单位分量
+       float vx = cosf(pred_theta);
+       float vy = sinf(pred_theta);
 
-        for (uint8_t i = 0; i < dir_count; i++)
-        {
-            float target_theta = Predict_Target_Theta(Odometry_GetState()->theta, available_dirs[i]);
-            float y_trend = sinf(target_theta); // sin代表Y轴分量
+       // 3. 计算绝对值增长增益
+       // 增益 = (X轴贡献 * X权重) + (Y轴贡献 * Y权重)
+       float gain = (vx * sign_x * X_MOVE_WEIGHT) + (vy * sign_y * Y_MOVE_WEIGHT);
 
-            // 目标是让 y 增加的方向 (North)
-            if (y_trend > max_y_trend)
-            {
-                max_y_trend = y_trend;
-                best_choice = available_dirs[i];
-            }
-        }
-    }
+       if (gain > max_score)
+       {
+           max_score = gain;
+           best_choice = available_dirs[i];
+       }
+   }
 
     return best_choice;
 }
