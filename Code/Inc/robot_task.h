@@ -9,7 +9,6 @@ typedef enum
 {
     MISSION_IDLE = 0,
     MISSION_RUNNING,
-    MISSION_CORNERING,
     MISSION_FAULT_LOST_LINE, // Waiting for human placement
     MISSION_FINISHED
 } Mission_State_t;

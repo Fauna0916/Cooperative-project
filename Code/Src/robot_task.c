@@ -169,19 +169,8 @@ void RobotTask_Update(OpenMV_Data_t *omv)
                 break;
             }
 
-            if (chosen_direction == Direction_LEFT || chosen_direction == Direction_RIGHT)
-            {
-
-                ctx.target_corner_yaw =Math_NormalizeAngle( Odometry_GetState()->theta + (chosen_direction * (PI / 2.0f))); // TODO integrat map_dir and openmv flag
-
-                ctx.corner_step = 0;
-                ctx.current_state = MISSION_CORNERING;
-            }
-            else
-            {
-                float dynamic_speed = dynamic_throttling(selected_error);
-                Control_SetLineError(dynamic_speed, selected_error);
-            }
+            float dynamic_speed = dynamic_throttling(selected_error);
+            Control_SetLineError(dynamic_speed, selected_error);
         }
         // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
         else
@@ -195,53 +184,6 @@ void RobotTask_Update(OpenMV_Data_t *omv)
             // 动态限速：误差越大速度越慢
             float dynamic_speed = dynamic_throttling(omv->err_f);
             Control_SetLineError(dynamic_speed, omv->err_f);
-        }
-        break;
-    case MISSION_CORNERING:
-        // --- 90-Degree Box Turn Sequence ---
-
-        // Step 0: The camera sees the corner early. The wheels are not on the intersection yet.
-        // We must drive forward slightly (blindly) so the wheels align with the corner.
-        if (ctx.corner_step == 0)
-        {
-            static float start_dist = 0;
-            if (start_dist == 0)
-                start_dist = Odometry_GetState()->distance;
-
-            Control_SetVelocity(BOX_ENTRY_SPEED, 0.0f); // Drive straight blind
-
-            if (Odometry_GetState()->distance - start_dist >= WHEELBASE_OFFSET)
-            {
-                start_dist = 0;
-                ctx.corner_step = 1;
-
-                // Trigger the IMU Turn
-                Control_SetIMUHeading(TURN_SPEED, ctx.target_corner_yaw);
-            }
-        }
-        // Step 1: Wait for IMU PID to settle
-        else if (ctx.corner_step == 1)
-        {
-            if (Control_IsHeadingSettled())
-            {
-                // Turn complete. Resume Vision Tracking
-                static float back_dist = 0;
-                if (back_dist == 0)
-                    back_dist = Odometry_GetState()->distance;
-
-                Control_SetVelocity(-BOX_ENTRY_SPEED, 0.0f);
-
-                float moved_displacement = fabsf(Odometry_GetState()->distance - back_dist);
-
-                if (moved_displacement >= BACKWARD_OFFSET)
-                {
-                    back_dist = 0;
-
-                    Control_Stop();
-                    ctx.current_state = MISSION_RUNNING;
-                    Control_SetLineError(CRUISE_SPEED, omv->err_f); // Reset OpenMV PID // TODO
-                }
-            }
         }
         break;
     }
