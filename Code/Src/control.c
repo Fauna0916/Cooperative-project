@@ -8,6 +8,7 @@
 #define MAX_LINEAR_VELOCITY 1.5f
 #define MAX_ANGULAR_VELOCITY 6.0f
 #define CORNERING_PENALTY_COEFF (0.15f)
+#define HEADING_SETTLE_TIMEOUT 500 // 500ms
 
 PID_PARA *Tuning;
 
@@ -16,7 +17,8 @@ PID_PARA Velocity_loop = {20, 2.06, 0.0}; // indoors
 
 // PID_PARA Vision_loop = {0.0159, 0.0, 0.054};
 // PID_PARA Vision_loop = {0.0264, 0.0, 0.20};
-PID_PARA Vision_loop = {0.0215, 0.0, 0.045};
+// PID_PARA Vision_loop = {0.0215, 0.0, 0.045};
+PID_PARA Vision_loop = {0.01, 0.0, 0.27};
 
 PID_PARA IMU_loop = {2.71, 0.0, 0.08}; // outdorrs
 
@@ -285,7 +287,7 @@ bool Control_IsHeadingSettled(void)
     float angle_err = Math_NormalizeAngleError(final_target_yaw, current_yaw);
     float current_w = Odometry_GetState()->angular_vel;
 
-    // If error is less than 2 degrees (0.035 rad) AND robot has mostly stopped spinning
+    // If error is less than 6 degrees (0.035 rad) AND robot has mostly stopped spinning
     if (fabs(angle_err) < 0.105f && fabs(current_w) < 0.1f)
     {
         printf("settleted\r\n");

@@ -10,7 +10,7 @@ float Predict_Target_Theta(float current_theta, OpenMV_Possible_Direction_t acti
     if (action == Direction_FORWARD)
         return current_theta;
     if (action == Direction_LEFT)
-        return Math_NormalizeAngle(current_theta + PI/2);
+        return Math_NormalizeAngle(current_theta + PI / 2);
     if (action == Direction_RIGHT)
         return Math_NormalizeAngle(current_theta - PI / 2);
     return current_theta;
@@ -19,7 +19,7 @@ float Predict_Target_Theta(float current_theta, OpenMV_Possible_Direction_t acti
 OpenMV_Possible_Direction_t Decide_Shortest_Path(uint8_t junction_flag)
 {
     // 如果不是路口，直接返回 NORMAL
-    if ((junction_flag & 0xF0) != 0x10)
+    if ((junction_flag & 0xF0) != OpenMV_FLAG_JUNC)
     {
         return Direction_NORMAL;
     }
@@ -28,43 +28,49 @@ OpenMV_Possible_Direction_t Decide_Shortest_Path(uint8_t junction_flag)
     OpenMV_Possible_Direction_t available_dirs[3];
     uint8_t dir_count = 0;
 
-    if (junction_flag & 0x01) available_dirs[dir_count++] = Direction_LEFT;
-    if (junction_flag & 0x02) available_dirs[dir_count++] = Direction_FORWARD;
-    if (junction_flag & 0x04) available_dirs[dir_count++] = Direction_RIGHT;
+    if (junction_flag & 0x01)
+        available_dirs[dir_count++] = Direction_LEFT;
+    if (junction_flag & 0x02)
+        available_dirs[dir_count++] = Direction_FORWARD;
+    if (junction_flag & 0x04)
+        available_dirs[dir_count++] = Direction_RIGHT;      
 
     // 如果解码错误，默认往前走
-    if (dir_count == 0) return Direction_FORWARD;
+    if (dir_count == 0)
+        return Direction_FORWARD;
 
     float sign_x = (Odometry_GetState()->x >= 0) ? 1.0f : -1.0f;
     float sign_y = (Odometry_GetState()->y >= 0) ? 1.0f : -1.0f;
 
+    printf("x:%.1f,%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y);
+
     OpenMV_Possible_Direction_t best_choice = available_dirs[0];
 
-   float max_score = -999.0f;
+    float max_score = -999.0f;
 
-   for (uint8_t i = 0; i < dir_count; i++)
-   {
-       // 1. 使用你提供的预测函数获取该动作后的朝向
-       float pred_theta = Predict_Target_Theta(Odometry_GetState()->theta, available_dirs[i]);
+    for (uint8_t i = 0; i < dir_count; i++)
+    {
+        float pred_theta = Predict_Target_Theta(Odometry_GetState()->theta, available_dirs[i]);
 
-       // 2. 计算该朝向在 X/Y 上的单位分量
-       float vx = cosf(pred_theta);
-       float vy = sinf(pred_theta);
+        // 2. 计算该朝向在 X/Y 上的单位分量
+        float vx = -sinf(pred_theta);
+        float vy = cosf(pred_theta);
 
-       // 3. 计算绝对值增长增益
-       // 增益 = (X轴贡献 * X权重) + (Y轴贡献 * Y权重)
-       float gain = (vx * sign_x * X_MOVE_WEIGHT) + (vy * sign_y * Y_MOVE_WEIGHT);
+        // 3. 计算绝对值增长增益
+        // 增益 = (X轴贡献 * X权重) + (Y轴贡献 * Y权重)
+        float gain = (vx * sign_x * X_MOVE_WEIGHT) + (vy * sign_y * Y_MOVE_WEIGHT);
 
-       if (gain > max_score)
-       {
-           max_score = gain;
-           best_choice = available_dirs[i];
-       }
-   }
+        if (gain > max_score)
+        {
+            max_score = gain;
+            best_choice = available_dirs[i];
+        }
+        printf("ava:%d,%f\r\n", available_dirs[i], gain);
+    }
 
+    printf("chosen:%d\r\n", best_choice);
     return best_choice;
 }
-
 
 Track_Marker_t Marker_update(void)
 {

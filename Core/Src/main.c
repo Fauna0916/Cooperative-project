@@ -125,6 +125,7 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
   RobotTask_Start();
+  static uint8_t corner_step = 0;
 
   /* USER CODE END 2 */
   while (1)
@@ -138,21 +139,62 @@ int main(void)
     //   printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
     // }
 
-    if (OpenMV_GetData()->is_updated)
+    if (corner_step == 0)
     {
-      OpenMV_GetData()->is_updated = 0;
-      RobotTask_Update(OpenMV_GetData());
-      // RobotTask_Update(OpenMV_FLAG_CORNER_LEFT, OpenMV_GetData()->error);
-      // printf("%d,%d\r\n", OpenMV_GetData()->error, OpenMV_GetData()->flag);
-      // if (OpenMV_GetData()->flag == OpenMV_FLAG_LOST)
-      // {
-      //   RobotTask_Update(OpenMV_FLAG_LOST, 0);
-      // }
-      // else
-      // {
-      //   RobotTask_Update(OpenMV_GetData()->flag, OpenMV_GetData()->error);
-      // }
+      static float start_dist = 0;
+      if (start_dist == 0)
+        start_dist = Odometry_GetState()->distance;
+
+      Control_SetVelocity(0.1, 0.0f); // Drive straight blind
+
+      if (Odometry_GetState()->distance - start_dist >= 0.15)
+      {
+        start_dist = 0;
+        corner_step = 1;
+
+        // Trigger the IMU Turn
+        Control_SetIMUHeading(0.1, PI/2);
+      }
     }
+    // Step 1: Wait for IMU PID to settle
+    else if (corner_step == 1)
+    {
+      if (Control_IsHeadingSettled())
+      {
+        // Turn complete. Resume Vision Tracking
+        static float back_dist = 0;
+        if (back_dist == 0)
+          back_dist = Odometry_GetState()->distance;
+
+        Control_SetVelocity(-0.1, 0.0f);
+
+        float moved_displacement = fabsf(Odometry_GetState()->distance - back_dist);
+
+        if (moved_displacement >= 0.1)
+        {
+          back_dist = 0;
+
+          Control_Stop();
+          Control_SetLineError(0.3, 0); // Reset OpenMV PID // TODO
+        }
+      }
+    }
+
+    // if (OpenMV_GetData()->is_updated)
+    // {
+    //   OpenMV_GetData()->is_updated = 0;
+    //   RobotTask_Update(OpenMV_GetData());
+    //   // RobotTask_Update(OpenMV_FLAG_CORNER_LEFT, OpenMV_GetData()->error);
+    //   //printf("%d,%x\r\n", OpenMV_GetData()->err_f, OpenMV_GetData()->flag);
+    //   // if (OpenMV_GetData()->flag == OpenMV_FLAG_LOST)
+    //   // {
+    //   //   RobotTask_Update(OpenMV_FLAG_LOST, 0);
+    //   // }
+    //   // else
+    //   // {
+    //   //   RobotTask_Update(OpenMV_GetData()->flag, OpenMV_GetData()->error);
+    //   // }
+    // }
 
     // }
     // else

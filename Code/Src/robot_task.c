@@ -1,8 +1,12 @@
 #include "robot_task.h"
 #include "control.h"
 #include "odometry.h"
-#include "math.h"
+#include <math.h>
+#include <stdlib.h>
 #include "utils.h"
+
+#define WHEELBASE_OFFSET 0.185f // Distance from camera view center to wheel axis (m)
+#define BACKWARD_OFFSET 0.1f
 
 // Task Context Instance
 static Robot_Context_t ctx;
@@ -13,7 +17,6 @@ static Robot_Context_t ctx;
 #define TURN_SPEED 0.0f      // 0.0 means pivot-in-place for IMU turns
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
-
 
 // 路口锁：防止在一个物理路口内，因为连续多帧视觉识别而重复决策
 static bool is_in_junction = false;
@@ -31,7 +34,7 @@ static float dynamic_throttling(float vision_error)
     float abs_error = fabs(vision_error);
 
     // Speed = Cruise_Speed - (Error * Drop_Factor)
-    float target_speed = CRUISE_SPEED - (abs_error * 0.01f);
+    float target_speed = CRUISE_SPEED - (abs_error * 0.20f);
 
     if (target_speed < BOX_ENTRY_SPEED)
     {
@@ -50,7 +53,7 @@ void RobotTask_Update(OpenMV_Data_t *omv)
     if (ctx.current_state == MISSION_FAULT_LOST_LINE)
     {
         // 只有看到 NORMAL 且 误差在可控范围内（比如线不在画面最边缘）
-        if (omv->flag != 0xFF && fabs(omv->err_f) < 65.0f)
+        if (omv->flag != OpenMV_FLAG_LOST && abs(omv->err_f) < 85)
         {
             line_stable_count++;
             // 必须连续 3 帧（约 30-50ms）看到线，才认为恢复成功
@@ -84,19 +87,19 @@ void RobotTask_Update(OpenMV_Data_t *omv)
         Control_Stop();
         break;
     case MISSION_FAULT_LOST_LINE:
-        Control_Stop(); // TODO: temp, should be deleted
-        // --- 原地搜索状态机 ---
-        // switch (ctx.search_step)
-        // {
-        // case 0: // 准备阶段：停止并等待惯性消失
-        //     Control_Stop();
-        //     if (fabs(Odometry_GetState()->angular_vel) < 0.2f)
-        //     {
-        //         ctx.search_step = 1;
-        //         // 目标：向左看
-        //         Control_SetIMUHeading(0.0f, Math_NormalizeAngle(ctx.search_base_yaw + SEARCH_ANGLE));
-        //     }
-        //     break;
+        // Control_Stop(); // TODO: temp, should be deleted
+        //  --- 原地搜索状态机 ---
+        //  switch (ctx.search_step)
+        //  {
+        //  case 0: // 准备阶段：停止并等待惯性消失
+        //      Control_Stop();
+        //      if (fabs(Odometry_GetState()->angular_vel) < 0.2f)
+        //      {
+        //          ctx.search_step = 1;
+        //          // 目标：向左看
+        //          Control_SetIMUHeading(0.0f, Math_NormalizeAngle(ctx.search_base_yaw + SEARCH_ANGLE));
+        //      }
+        //      break;
 
         // case 1: // 正在向左看
         //     if (Control_IsHeadingSettled())
@@ -135,7 +138,7 @@ void RobotTask_Update(OpenMV_Data_t *omv)
 
     case MISSION_RUNNING:
         // 1. 彻底丢线
-        if (omv->flag == 0xFF) // TrackFlag.LOST
+        if (omv->flag == OpenMV_FLAG_LOST) // TrackFlag.LOST
         {
             ctx.current_state = MISSION_FAULT_LOST_LINE;
             ctx.search_step = 0;
@@ -144,17 +147,13 @@ void RobotTask_Update(OpenMV_Data_t *omv)
             is_in_junction = false; // 重置路口锁
         }
         // 2. 遇到岔路口 (0x10 系列)
-        else if ((omv->flag & 0xF0) == 0x10)
+        else if ((omv->flag & 0xF0) == OpenMV_FLAG_JUNC)
         {
-            // 如果是刚进入这个路口，进行唯一一次路径决策
-            if (!is_in_junction)
-            {
-                chosen_direction = Decide_Shortest_Path(omv->flag);
-                is_in_junction = true;
-            }
+
+            chosen_direction = Decide_Shortest_Path(omv->flag);
 
             // 根据决策结果，挑选对应的误差喂给 PID
-            float selected_error = 0.0f;
+            int16_t selected_error = 0.0f;
             switch (chosen_direction)
             {
             case Direction_LEFT:
@@ -170,9 +169,19 @@ void RobotTask_Update(OpenMV_Data_t *omv)
                 break;
             }
 
-            float dynamic_speed = dynamic_throttling(selected_error);
+            if (chosen_direction == Direction_LEFT || chosen_direction == Direction_RIGHT)
+            {
 
-            Control_SetLineError(dynamic_speed, selected_error);
+                ctx.target_corner_yaw =Math_NormalizeAngle( Odometry_GetState()->theta + (chosen_direction * (PI / 2.0f))); // TODO integrat map_dir and openmv flag
+
+                ctx.corner_step = 0;
+                ctx.current_state = MISSION_CORNERING;
+            }
+            else
+            {
+                float dynamic_speed = dynamic_throttling(selected_error);
+                Control_SetLineError(dynamic_speed, selected_error);
+            }
         }
         // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
         else
@@ -185,9 +194,54 @@ void RobotTask_Update(OpenMV_Data_t *omv)
 
             // 动态限速：误差越大速度越慢
             float dynamic_speed = dynamic_throttling(omv->err_f);
-
-            // 默认跟随 err_f
             Control_SetLineError(dynamic_speed, omv->err_f);
+        }
+        break;
+    case MISSION_CORNERING:
+        // --- 90-Degree Box Turn Sequence ---
+
+        // Step 0: The camera sees the corner early. The wheels are not on the intersection yet.
+        // We must drive forward slightly (blindly) so the wheels align with the corner.
+        if (ctx.corner_step == 0)
+        {
+            static float start_dist = 0;
+            if (start_dist == 0)
+                start_dist = Odometry_GetState()->distance;
+
+            Control_SetVelocity(BOX_ENTRY_SPEED, 0.0f); // Drive straight blind
+
+            if (Odometry_GetState()->distance - start_dist >= WHEELBASE_OFFSET)
+            {
+                start_dist = 0;
+                ctx.corner_step = 1;
+
+                // Trigger the IMU Turn
+                Control_SetIMUHeading(TURN_SPEED, ctx.target_corner_yaw);
+            }
+        }
+        // Step 1: Wait for IMU PID to settle
+        else if (ctx.corner_step == 1)
+        {
+            if (Control_IsHeadingSettled())
+            {
+                // Turn complete. Resume Vision Tracking
+                static float back_dist = 0;
+                if (back_dist == 0)
+                    back_dist = Odometry_GetState()->distance;
+
+                Control_SetVelocity(-BOX_ENTRY_SPEED, 0.0f);
+
+                float moved_displacement = fabsf(Odometry_GetState()->distance - back_dist);
+
+                if (moved_displacement >= BACKWARD_OFFSET)
+                {
+                    back_dist = 0;
+
+                    Control_Stop();
+                    ctx.current_state = MISSION_RUNNING;
+                    Control_SetLineError(CRUISE_SPEED, omv->err_f); // Reset OpenMV PID // TODO
+                }
+            }
         }
         break;
     }

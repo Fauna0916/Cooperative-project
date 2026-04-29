@@ -109,8 +109,13 @@ void Odometry_Update(void)
     // --- Integrate X, Y using 2nd-Order Runge-Kutta (Midpoint Method) ---
     // Calculate the average heading during this time step for smoother path integration
     float avg_theta = Math_NormalizeAngle(odo_state.theta + (delta_theta / 2.0f));
-    odo_state.x += delta_dist * cosf(avg_theta);
-    odo_state.y += delta_dist * sinf(avg_theta);
+
+    //TODO foward -> x
+    // odo_state.x += delta_dist * cosf(avg_theta);
+    // odo_state.y += delta_dist * sinf(avg_theta);
+
+    odo_state.x -= delta_dist * sinf(avg_theta);
+    odo_state.y += delta_dist * cosf(avg_theta);
 }
 
 Odometry_State_t *Odometry_GetState(void)
