@@ -87,6 +87,7 @@ static void UI_DrawRadarPage(void)
 
 void Display_Init(void)
 {
+    ST7735_Init();
     g_displayMode = DISPLAY_MODE_LINE;
 
     g_l1 = 0;

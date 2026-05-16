@@ -168,9 +168,15 @@ void RobotTask_Update(OpenMV_Data_t *omv)
                 selected_error = omv->err_f;
                 break;
             }
-
-            float dynamic_speed = dynamic_throttling(selected_error);
-            Control_SetLineError(dynamic_speed, selected_error);
+            if (chosen_direction == Direction_LEFT || chosen_direction == Direction_RIGHT)
+            {
+                Control_SetLineError(TURN_SPEED, selected_error);
+            }
+            else
+            {
+                float dynamic_speed = dynamic_throttling(selected_error);
+                Control_SetLineError(dynamic_speed, selected_error);
+            }
         }
         // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
         else

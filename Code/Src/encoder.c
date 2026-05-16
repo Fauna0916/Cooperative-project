@@ -32,7 +32,7 @@ static float filtered_rpm_r = 0.0f;
 void Encoder_Update(void)
 {
     uint16_t current_left = __HAL_TIM_GET_COUNTER(&LEFT_TIM);
-    uint16_t current_right = __HAL_TIM_GET_COUNTER(&RIGHT_TIM);
+    uint16_t current_right = -__HAL_TIM_GET_COUNTER(&RIGHT_TIM);
 
     int16_t delta_left = (int16_t)((uint16_t)current_left - (uint16_t)last_count_left);
     int16_t delta_right = (int16_t)((uint16_t)current_right - (uint16_t)last_count_right);

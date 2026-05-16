@@ -98,7 +98,7 @@ void Control_Init(void)
     PID_Init(&pid_right_motor, Velocity_loop.Kp, Velocity_loop.Ki, Velocity_loop.Kd, 9500.0f, 3000.0f);
     PID_Init(&pid_imu_heading, IMU_loop.Kp, IMU_loop.Ki, IMU_loop.Kd, 4.0f, 1.0f);
 
-    // 输入：像素偏移，输出：角速度(rad/s)
+
     PID_Init(&pid_line_follow, Vision_loop.Kp, Vision_loop.Ki, Vision_loop.Kd, 4.0f, 1.0f);
 
     current_mode = CTRL_STOP;
