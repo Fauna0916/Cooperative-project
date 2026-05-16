@@ -18,8 +18,6 @@ static Robot_Context_t ctx;
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
-
-static bool is_in_junction = false;
 static Direction_t chosen_direction = Direction_NORMAL;
 
 void RobotTask_Init(void)
@@ -122,10 +120,9 @@ void RobotTask_Update(GraySensor_Data_t *gray)
 
         if (gray->flag != GraySensor_FLAG_LOST && abs(gray->err_f) < 75)
         {
-            if (++line_stable_count > 3)
+            if (++line_stable_count > 2)
             {
                 ctx.current_state = MISSION_RUNNING;
-                is_in_junction = false;
                 Control_SetLineError(BOX_ENTRY_SPEED, gray->err_f);
                 return;
             }
@@ -145,16 +142,12 @@ void RobotTask_Update(GraySensor_Data_t *gray)
             ctx.search_step = 0;
             ctx.search_base_yaw = Odometry_GetState()->theta;
             line_stable_count = 0;
-            is_in_junction = false; // 重置路口锁
         }
         // 2. 遇到岔路口 (0x10 系列)
         else if ((gray->flag & 0xF0) == GraySensor_FLAG_JUNC)
         {
-            if (!is_in_junction)
-            {
-                chosen_direction = Decide_Shortest_Path(gray->flag);
-                is_in_junction = true;
-            }
+
+            chosen_direction = Decide_Shortest_Path(gray->flag);
 
             int16_t selected_error = 0.0f;
             switch (chosen_direction)
@@ -184,12 +177,6 @@ void RobotTask_Update(GraySensor_Data_t *gray)
         // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
         else
         {
-            // 离开路口，解除锁定
-            if (is_in_junction)
-            {
-                is_in_junction = false;
-            }
-
             float dynamic_speed = dynamic_throttling(gray->err_f);
             Control_SetLineError(dynamic_speed, gray->err_f);
         }
