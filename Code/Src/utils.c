@@ -1,7 +1,7 @@
 #include "utils.h"
 #include "string.h"
 #include "odometry.h"
-#include "openmv.h"
+#include "gray_sensor.h"
 
 uint8_t debug_flag = 0;
 

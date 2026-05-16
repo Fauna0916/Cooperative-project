@@ -1,7 +1,7 @@
 #ifndef ROBOT_TASK_H
 #define ROBOT_TASK_H
 
-#include "openmv.h"
+#include "gray_sensor.h"
 #include "control.h"
 #include "map.h"
 
@@ -32,7 +32,7 @@ typedef struct
 
 void RobotTask_Init(void);
 void RobotTask_Start(void);
-void RobotTask_Update(OpenMV_Data_t *omv);
+void RobotTask_Update(GraySensor_Data_t *gray);
 void RobotTask_AcknowledgePlacement(void); // Called by EXTI User Button
 
 #endif

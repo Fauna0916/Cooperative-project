@@ -1,11 +1,11 @@
 #include "map.h"
+#include "gray_sensor.h"
 #include "utils.h"
-#include "odometry.h"
 
 #define X_MOVE_WEIGHT 0.30f // X轴移动权重 30cm
 #define Y_MOVE_WEIGHT 0.50f // Y轴移动权重 50cm
 
-float Predict_Target_Theta(float current_theta, OpenMV_Possible_Direction_t action)
+float Predict_Target_Theta(float current_theta, Direction_t action)
 {
     if (action == Direction_FORWARD)
         return current_theta;
@@ -16,16 +16,16 @@ float Predict_Target_Theta(float current_theta, OpenMV_Possible_Direction_t acti
     return current_theta;
 }
 
-OpenMV_Possible_Direction_t Decide_Shortest_Path(uint8_t junction_flag)
+Direction_t Decide_Shortest_Path(uint8_t junction_flag)
 {
     // 如果不是路口，直接返回 NORMAL
-    if ((junction_flag & 0xF0) != OpenMV_FLAG_JUNC)
+    if ((junction_flag & 0xF0) != GraySensor_FLAG_JUNC)
     {
         return Direction_NORMAL;
     }
 
     // 解析当前路口有哪些可行方向
-    OpenMV_Possible_Direction_t available_dirs[3];
+    Direction_t available_dirs[3];
     uint8_t dir_count = 0;
 
     if (junction_flag & 0x01)
@@ -44,7 +44,7 @@ OpenMV_Possible_Direction_t Decide_Shortest_Path(uint8_t junction_flag)
 
     printf("x:%.1f,%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y);
 
-    OpenMV_Possible_Direction_t best_choice = available_dirs[0];
+    Direction_t best_choice = available_dirs[0];
 
     float max_score = -999.0f;
 

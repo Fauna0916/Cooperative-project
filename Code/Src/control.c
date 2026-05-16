@@ -242,7 +242,7 @@ void Control_SetVelocity(float linear_vel, float angular_vel)
     target_angular_w = angular_vel;
 }
 
-void Control_SetLineError(float base_linear_vel, float openmv_error)
+void Control_SetLineError(float base_linear_vel, float error)
 {
     // Only clear the PID if we are JUST transitioning into this mode
     if (current_mode != CTRL_LINE_FOLLOWING)
@@ -252,7 +252,7 @@ void Control_SetLineError(float base_linear_vel, float openmv_error)
 
     current_mode = CTRL_LINE_FOLLOWING;
     target_linear_v = base_linear_vel;
-    current_line_error = openmv_error;
+    current_line_error = error;
 }
 
 void Control_SetIMUHeading(float linear_vel, float target_yaw)

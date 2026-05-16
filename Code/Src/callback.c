@@ -1,5 +1,4 @@
 #include "callback.h"
-#include "openmv.h"
 
 extern uint8_t debug_flag;
 
@@ -21,7 +20,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
-    OpenMV_RxEventCallback(huart, Size);
     TUNING_RxEventCallback(huart, Size);
 }
 
@@ -32,10 +30,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
-{
-    OpenMV_ErrorCallback(huart);
-}
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {

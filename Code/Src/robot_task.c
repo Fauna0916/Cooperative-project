@@ -18,9 +18,9 @@ static Robot_Context_t ctx;
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
-// 路口锁：防止在一个物理路口内，因为连续多帧视觉识别而重复决策
+
 static bool is_in_junction = false;
-static OpenMV_Possible_Direction_t chosen_direction = Direction_NORMAL;
+static Direction_t chosen_direction = Direction_NORMAL;
 
 void RobotTask_Init(void)
 {
@@ -43,42 +43,73 @@ static float dynamic_throttling(float vision_error)
     return target_speed;
 }
 
+/**
+ * @brief  原地扫视搜索黑线状态机
+ * @note   由 RobotTask_Update 在 MISSION_FAULT_LOST_LINE 状态下调用
+ */
+void Execute_Line_Search_Sequence(void)
+{
+    Odometry_State_t *odo = Odometry_GetState();
+
+    switch (ctx.search_step)
+    {
+    case 0:
+        Control_Stop();
+        if (fabs(odo->angular_vel) < 0.2f)
+        {
+            ctx.search_step = 1;
+            // 开始向左扫视：基础航向 + 搜索角
+            float target_yaw = Math_NormalizeAngle(ctx.search_base_yaw + SEARCH_ANGLE);
+            Control_SetIMUHeading(0.0f, target_yaw);
+        }
+        break;
+
+    case 1: // --- 正在向左扫视 ---
+        if (Control_IsHeadingSettled())
+        {
+            ctx.search_step = 2;
+            // 转向右侧扫视：基础航向 - 搜索角
+            float target_yaw = Math_NormalizeAngle(ctx.search_base_yaw - SEARCH_ANGLE);
+            Control_SetIMUHeading(0.0f, target_yaw);
+        }
+        break;
+
+    case 2: // --- 正在向右扫视 ---
+        if (Control_IsHeadingSettled())
+        {
+            ctx.search_step = 3;
+            // 扫视一圈没发现，回到最初丢失的方向，等待人工救援
+            Control_SetIMUHeading(0.0f, ctx.search_base_yaw);
+        }
+        break;
+
+    case 3: // --- 正在回正中心 ---
+        if (Control_IsHeadingSettled())
+        {
+            ctx.search_step = 4; // 搜索失败，进入彻底丢失模式
+        }
+        break;
+
+    case 4: // --- 彻底丢失阶段 ---
+        Control_Stop();
+        break;
+
+    default:
+        ctx.search_step = 4;
+        break;
+    }
+}
+
 static uint8_t line_stable_count = 0;
 
-void RobotTask_Update(OpenMV_Data_t *omv)
+void RobotTask_Update(GraySensor_Data_t *gray)
 {
-    // ---------------------------------------------------------
-    // 1. FAULT DETECTION
-    // ---------------------------------------------------------
-    if (ctx.current_state == MISSION_FAULT_LOST_LINE)
-    {
-        // 只有看到 NORMAL 且 误差在可控范围内（比如线不在画面最边缘）
-        if (omv->flag != OpenMV_FLAG_LOST && abs(omv->err_f) < 85)
-        {
-            line_stable_count++;
-            // 必须连续 3 帧（约 30-50ms）看到线，才认为恢复成功
-            if (line_stable_count > 3)
-            {
-                ctx.current_state = MISSION_RUNNING;
-                // 恢复瞬间使用较慢的慢速，给 PID 锁定的时间，防止甩尾
-                Control_SetLineError(BOX_ENTRY_SPEED, omv->err_f);
-                return;
-            }
-        }
-        else
-        {
-            line_stable_count = 0;
-        }
-    }
 
     // ---------------------------------------------------------
     // MARKER TRACKING: Update Last Checkpoint
     // ---------------------------------------------------------
     // ctx.last_passed_marker = Marker_update(); TODO:full map
 
-    //  ---------------------------------------------------------
-    //  STATE MACHINE
-    //  ---------------------------------------------------------
     switch (ctx.current_state)
     {
     case MISSION_IDLE:
@@ -88,57 +119,27 @@ void RobotTask_Update(OpenMV_Data_t *omv)
         break;
     case MISSION_FAULT_LOST_LINE:
         // Control_Stop(); // TODO: temp, should be deleted
-        //  --- 原地搜索状态机 ---
-        //  switch (ctx.search_step)
-        //  {
-        //  case 0: // 准备阶段：停止并等待惯性消失
-        //      Control_Stop();
-        //      if (fabs(Odometry_GetState()->angular_vel) < 0.2f)
-        //      {
-        //          ctx.search_step = 1;
-        //          // 目标：向左看
-        //          Control_SetIMUHeading(0.0f, Math_NormalizeAngle(ctx.search_base_yaw + SEARCH_ANGLE));
-        //      }
-        //      break;
 
-        // case 1: // 正在向左看
-        //     if (Control_IsHeadingSettled())
-        //     {
-        //         ctx.search_step = 2;
-        //         // 目标：向右看
-        //         Control_SetIMUHeading(0.0f, Math_NormalizeAngle(ctx.search_base_yaw - SEARCH_ANGLE));
-        //     }
-        //     break;
-
-        // case 2: // 正在向右看
-        //     if (Control_IsHeadingSettled())
-        //     {
-        //         ctx.search_step = 3;
-        //         // 目标：回中
-        //         Control_SetIMUHeading(0.0f, ctx.search_base_yaw);
-        //     }
-        //     break;
-
-        // case 3: // 正在回中
-        //     if (Control_IsHeadingSettled())
-        //     {
-        //         ctx.search_step = 4; // 搜索失败
-        //         Control_Stop();
-        //     }
-        //     break;
-
-        // case 4: // 彻底丢失
-        //     // 此时电机完全停止，等待人工按键 AcknowledgePlacement
-        //     Control_Stop();
-        //     // TODO: Turn on RED LED, print to OLED:
-        //     // "LOST! Move to Marker %d and Press Button", ctx.last_passed_marker
-        //     break;
-        // }
+        if (gray->flag != GraySensor_FLAG_LOST && abs(gray->err_f) < 75)
+        {
+            if (++line_stable_count > 3)
+            {
+                ctx.current_state = MISSION_RUNNING;
+                is_in_junction = false;
+                Control_SetLineError(BOX_ENTRY_SPEED, gray->err_f);
+                return;
+            }
+        }
+        else
+        {
+            line_stable_count = 0;
+            Execute_Line_Search_Sequence();
+        }
         break;
 
     case MISSION_RUNNING:
         // 1. 彻底丢线
-        if (omv->flag == OpenMV_FLAG_LOST) // TrackFlag.LOST
+        if (gray->flag == GraySensor_FLAG_LOST) // TrackFlag.LOST
         {
             ctx.current_state = MISSION_FAULT_LOST_LINE;
             ctx.search_step = 0;
@@ -147,25 +148,27 @@ void RobotTask_Update(OpenMV_Data_t *omv)
             is_in_junction = false; // 重置路口锁
         }
         // 2. 遇到岔路口 (0x10 系列)
-        else if ((omv->flag & 0xF0) == OpenMV_FLAG_JUNC)
+        else if ((gray->flag & 0xF0) == GraySensor_FLAG_JUNC)
         {
+            if (!is_in_junction)
+            {
+                chosen_direction = Decide_Shortest_Path(gray->flag);
+                is_in_junction = true;
+            }
 
-            chosen_direction = Decide_Shortest_Path(omv->flag);
-
-            // 根据决策结果，挑选对应的误差喂给 PID
             int16_t selected_error = 0.0f;
             switch (chosen_direction)
             {
             case Direction_LEFT:
-                selected_error = omv->err_l;
+                selected_error = gray->err_l;
                 break;
             case Direction_RIGHT:
-                selected_error = omv->err_r;
+                selected_error = gray->err_r;
                 break;
             case Direction_FORWARD:
             case Direction_NORMAL:
             default:
-                selected_error = omv->err_f;
+                selected_error = gray->err_f;
                 break;
             }
             if (chosen_direction == Direction_LEFT || chosen_direction == Direction_RIGHT)
@@ -187,9 +190,8 @@ void RobotTask_Update(OpenMV_Data_t *omv)
                 is_in_junction = false;
             }
 
-            // 动态限速：误差越大速度越慢
-            float dynamic_speed = dynamic_throttling(omv->err_f);
-            Control_SetLineError(dynamic_speed, omv->err_f);
+            float dynamic_speed = dynamic_throttling(gray->err_f);
+            Control_SetLineError(dynamic_speed, gray->err_f);
         }
         break;
     }
