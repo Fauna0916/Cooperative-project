@@ -18,7 +18,7 @@ static Robot_Context_t ctx;
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
-#define JUNC_WINDOW_SIZE 15 // 决策窗口大小
+#define JUNC_WINDOW_SIZE 20
 static Direction_t decision_buffer[JUNC_WINDOW_SIZE];
 static uint8_t buffer_idx = 0;
 static bool is_deciding = false;
@@ -141,7 +141,7 @@ void RobotTask_Update(GraySensor_Data_t *gray)
 
         if (gray->flag != GraySensor_FLAG_LOST && abs(gray->err_f) < 95)
         {
-            if (++line_stable_count > 2)
+            if (++line_stable_count > 3)
             {
                 ctx.current_state = MISSION_RUNNING;
                 Control_SetLineError(BOX_ENTRY_SPEED, gray->err_f);
@@ -218,7 +218,7 @@ void RobotTask_Update(GraySensor_Data_t *gray)
                     return;
                 }
 
-                Control_SetLineError(TURN_SPEED, selected_error);
+                Control_SetLineError(current_speed, selected_error);
             }
         }
         // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
@@ -235,6 +235,9 @@ void RobotTask_Update(GraySensor_Data_t *gray)
 
 void RobotTask_Start(void)
 {
+    is_deciding = false;
+    is_executing_junction = false;
+    buffer_idx = 0;
     ctx.current_state = MISSION_RUNNING;
     ctx.last_passed_marker = MARKER_START;
     Control_SetLineError(CRUISE_SPEED, 0.0f);
