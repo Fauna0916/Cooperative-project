@@ -1,38 +1,24 @@
 #include "gray_sensor.h"
 
-#define SOFT_LOST_TIMEOUT 30 // 软丢线帧数。在 500Hz 下，30帧约为 60ms
-static uint32_t lost_counter = 0; 
-
+#define LOST_THRESHOLD 2000 // 丢线容忍帧数。假设1kHz采样，50帧等于50ms。根据车速调整。
+static uint16_t lost_frame_cnt = 0;
 GraySensor_Data_t gray_data = {0};
-
-// --- 配置区 ---
-// 假设黑线输出 1，白底输出 0。
-#define BLACK_LINE_ACTIVE_STATE GPIO_PIN_SET
-
-// 【优化 1】：非线性权重 (应对 1.1 难点)
-// 中间极小(2)，保证直行不发抖；外侧极大(100)，保证波浪急弯死死咬住线。
-static const int16_t GraySensor_WEIGHTS[8] = {-100, -50, -15, -2, 2, 15, 50, 100};
-
-static int16_t last_error = 0;
-
-static inline void Set_Mux_Channel(uint8_t ch)
+typedef struct
 {
-    // 根据你的真值表 000 -> CH1, 111 -> CH8
-    HAL_GPIO_WritePin(GRAY_AD2_GPIO_Port, GRAY_AD2_Pin, (ch & 0x04) ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GRAY_AD1_GPIO_Port, GRAY_AD1_Pin, (ch & 0x02) ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GRAY_AD0_GPIO_Port, GRAY_AD0_Pin, (ch & 0x01) ? GPIO_PIN_SET : GPIO_PIN_RESET);
-}
+    int16_t center_err; // 该黑块的中心偏差 (-100 到 100)
+    uint8_t width;      // 该黑块包含的传感器数量
+    uint8_t is_left;    // 是否靠近左侧
+    uint8_t is_right;   // 是否靠近右侧
+} LineBlob_t;
 
-static inline uint8_t Read_Sensor_Out(void)
-{
-    return (HAL_GPIO_ReadPin(GRAY_OUT_GPIO_Port, GRAY_OUT_Pin) == BLACK_LINE_ACTIVE_STATE) ? 1 : 0;
-}
+// 内部静态变量记录上一次的偏差，用于防干扰追踪和脱线找回
+static int16_t last_valid_err_f = 0;
 
-// 基于主频的微秒级延时，应对 400MHz 芯片
-static inline void Delay_us(uint32_t us)
+static inline void Multiplexer_Delay(void)
 {
-    uint32_t count = us * (SystemCoreClock / 1000000) / 4;
-    while (count--)
+    // 74HC4051 切换延迟约 20-50ns。400MHz下1个NOP是2.5ns
+    // 循环或NOP指令确保ADC/GPIO读取前电平已稳定
+    for (volatile int i = 0; i < 15; i++)
     {
         __NOP();
     }
@@ -40,125 +26,182 @@ static inline void Delay_us(uint32_t us)
 
 void GraySensor_Init(void)
 {
-    gray_data.flag = GraySensor_FLAG_LOST;
-}
-
-/**
- * @brief  传感器核心处理逻辑 (建议放入 500Hz~1000Hz 定时器)
- */
-void GraySensor_Update(void)
-{
-    uint8_t raw_mask = 0;
-
-    // 1. 硬件扫描 8 个通道获取数据 (Bit0->CH1, Bit7->CH8)
-    for (uint8_t i = 0; i < 8; i++)
-    {
-        Set_Mux_Channel(i);
-        Delay_us(2); 
-
-        if (Read_Sensor_Out() == 1)
-        {
-            raw_mask |= (1 << i);
-        }
-    }
-    gray_data.raw_data = raw_mask;
-
-    // --- 提取区域特征 ---
-    bool is_left_on = (raw_mask & 0x03);   // CH1, CH2
-    bool is_center_on = (raw_mask & 0x18); // CH4, CH5
-    bool is_right_on = (raw_mask & 0xC0);  // CH7, CH8
-
-    // 2. 计算巡线误差与抗干扰逻辑
-    int32_t sum_weight = 0;
-    uint8_t error_active_count = 0;
-    uint8_t total_active_count = 0;
-
-    for (uint8_t i = 0; i < 8; i++)
-    {
-        if (raw_mask & (1 << i))
-        {
-            total_active_count++;
-
-            // 【优化 2】：中心锁定机制 (应对 1.3 难点，防止被切线圆吸入)
-            // 如果中间在车道内，且触发的是最边缘(i=0 或 i=7)，则剥夺其对转向误差的贡献！
-            if (is_center_on && (i == 0 || i == 7))
-            {
-                continue;
-            }
-
-            sum_weight += GraySensor_WEIGHTS[i];
-            error_active_count++;
-        }
-    }
-
-    if (total_active_count > 0)
-    {
-        lost_counter = 0;
-
-        if (total_active_count >= 5 || (is_left_on && is_right_on))
-        {
-            // --- 情况 B: 十字路口 / 丁字路 / 大面积干扰 ---
-            // 判断条件强化：触发大于5个，或者左右两端同时触发(中间断开的情况)
-            gray_data.flag = GraySensor_FLAG_JUNC;
-
-            // 构造方向可用掩码，无缝对接 Decide_Shortest_Path
-            if (is_left_on)
-                gray_data.flag |= 0x01; // Bit0: 左边有路
-            if (is_center_on)
-                gray_data.flag |= 0x02; // Bit1: 前方有路
-            if (is_right_on)
-                gray_data.flag |= 0x04; // Bit2: 右边有路
-
-            // 设置各个方向的目标靶点 (为你后续的分段转向PID留好接口)
-            gray_data.err_l = GraySensor_WEIGHTS[1]; // 左转靶点
-            gray_data.err_r = GraySensor_WEIGHTS[6]; // 右转靶点
-            gray_data.err_f = 0;                     // 直行靶点
-
-            // 路口期间，仍维持正常的误差输出，防止小车在路口发飙
-            if (error_active_count > 0)
-            {
-                gray_data.current_error = sum_weight / error_active_count;
-            }
-            else
-            {
-                gray_data.current_error = last_error;
-            }
-        }
-        else
-        {
-            gray_data.flag = GraySensor_FLAG_NORMAL;
-        }
-
-        // 正常计算误差并更新记忆
-        gray_data.current_error = sum_weight / error_active_count;
-        last_error = gray_data.current_error;
-    }
-    else
-    {
-        // --- 关键修改：进入丢线检测逻辑 ---
-        lost_counter++;
-
-        if (lost_counter < SOFT_LOST_TIMEOUT)
-        {
-            /* 【软丢线阶段】：不报 LOST，不触发主状态机原地搜线 */
-            // 我们依然报 NORMAL，但通过 current_error 输出一个极大的转向修正
-            // 引导 PID 环路在惯性作用下把车头“甩”回线上
-            gray_data.flag = GraySensor_FLAG_NORMAL;
-
-            // 维持最后一次偏航的极值误差
-            gray_data.current_error = (last_error > 0) ? 110 : -110;
-        }
-        else
-        {
-            /* 【硬丢线阶段】：正式报 LOST，交由主状态机接管 */
-            // 此时说明小车已经完全脱离轨道且自动纠偏失败
-            gray_data.flag = GraySensor_FLAG_LOST;
-            gray_data.current_error = 0; // 或者保持极值，取决于搜线策略
-        }
-    }
+    last_valid_err_f = 0;
 }
 
 GraySensor_Data_t *GraySensor_GetData(void)
 {
     return &gray_data;
+}
+
+
+
+/**
+ * @brief 底层读取8路复用传感器原始数据
+ * @return 8位无符号整数，Bit7对应最左侧传感器，Bit0对应最右侧
+ */
+static uint8_t GraySensor_ReadRaw(void)
+{
+    uint8_t raw = 0;
+
+    // 遍历通道 0 到 7
+    for (uint8_t i = 0; i < 8; i++)
+    {
+        // 设置 AD0, AD1, AD2
+        HAL_GPIO_WritePin(GRAY_AD0_GPIO_Port, GRAY_AD0_Pin, (i & 0x01) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GRAY_AD1_GPIO_Port, GRAY_AD1_Pin, (i & 0x02) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GRAY_AD2_GPIO_Port, GRAY_AD2_Pin, (i & 0x04) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+        Multiplexer_Delay(); // 关键延时，防止读入虚假电平
+
+        uint8_t bit_val = HAL_GPIO_ReadPin(GRAY_OUT_GPIO_Port, GRAY_OUT_Pin);
+
+// 统一转换为：1表示踩到黑线，0表示白色背景
+#if SENSOR_BLACK_ACTIVE_LEVEL == 0
+        bit_val = !bit_val;
+#endif
+
+        if (bit_val)
+        {
+            // 假设通道 1 (i=0) 是最右侧(Bit0)，通道 8 (i=7) 是最左侧(Bit7)
+            // 如果您的硬件安装相反，可改为 raw |= (1 << (7 - i));
+            raw |= (1 << i);
+        }
+    }
+    return raw;
+}
+
+/**
+ * @brief 核心更新函数：读取数据，分离线段，计算偏差，识别路口
+ * @param gray_data 传感器数据结构体指针
+ */
+void GraySensor_Update(void)
+{
+
+    uint8_t current_raw = GraySensor_ReadRaw();
+    gray_data.raw_data = current_raw;
+
+    // 1. 脱线/丢线逻辑 (引入缓冲机制)
+    if (current_raw == 0x00)
+    {
+        lost_frame_cnt++;
+
+        if (lost_frame_cnt < LOST_THRESHOLD)
+        {
+            // --- 【阶段 A：丢线缓冲期】 ---
+            // 伪装成 NORMAL 状态，让主状态机继续运行巡线逻辑
+            gray_data.flag = GraySensor_FLAG_NORMAL;
+            // 保持最后的有效偏差，实现“惯性巡线”
+            gray_data.err_f = last_valid_err_f;
+
+            // 预设转弯偏差（以防主状态机在缓冲期内进路口逻辑）
+            gray_data.err_l = 100;
+            gray_data.err_r = -100;
+        }
+        else
+        {
+            // --- 【阶段 B：正式确认丢线】 ---
+            // 超过阈值，触发真正的 LOST 状态
+            gray_data.flag = GraySensor_FLAG_LOST;
+            // 这里的 err_f 用于搜线方向引导：往最后一次偏离的方向找
+            gray_data.err_f = (last_valid_err_f > 0) ? 100 : -100;
+            gray_data.err_l = 100;
+            gray_data.err_r = -100;
+        }
+        return; 
+    }
+    else
+    {
+        lost_frame_cnt = 0;
+    }
+
+    // 2. 连通域分析 (Blob Extraction) —— 解决1.1平行线干扰的核心
+    LineBlob_t blobs[4];
+    uint8_t blob_count = 0;
+    int current_blob_start = -1;
+
+    for (int8_t i = 7; i >= -1; i--) // 从左到右遍历位，多扫描一次-1用于收尾
+    {
+        uint8_t bit_is_1 = (i >= 0) ? ((gray_data.raw_data >> i) & 0x01) : 0;
+
+        if (bit_is_1)
+        {
+            if (current_blob_start == -1)
+            {
+                current_blob_start = i; // 发现新黑块起点
+            }
+        }
+        else
+        {
+            if (current_blob_start != -1)
+            {
+                // 结算当前黑块
+                uint8_t end = i + 1;
+                uint8_t width = current_blob_start - end + 1;
+
+                // 计算质心位置 (0~7)，转换为 -100(最右) 到 100(最左) 的偏差
+                // bit7对应+100, bit0对应-100。公式：err = (center_bit - 3.5) * (200 / 7)
+                float center_bit = (current_blob_start + end) / 2.0f;
+                int16_t err = (int16_t)((center_bit - 3.5f) * 28.57f);
+
+                blobs[blob_count].center_err = err;
+                blobs[blob_count].width = width;
+                blobs[blob_count].is_left = (current_blob_start >= 5); // 触及左侧边缘
+                blobs[blob_count].is_right = (end <= 2);               // 触及右侧边缘
+
+                blob_count++;
+                current_blob_start = -1;
+            }
+        }
+    }
+
+    // 3. 偏差分配与抗干扰逻辑
+    int16_t best_err_f = 0;
+    int min_diff = 999;
+    uint8_t dir_avail = 0; // 记录路口可用方向: bit0=左, bit1=前, bit2=右
+
+    for (uint8_t i = 0; i < blob_count; i++)
+    {
+        // 寻找与上一次 err_f 最接近的 Blob 作为当前的前进线 (无视突然出现的旁线干扰)
+        int diff = abs(blobs[i].center_err - last_valid_err_f);
+        if (diff < min_diff)
+        {
+            min_diff = diff;
+            best_err_f = blobs[i].center_err;
+        }
+
+        // 判断路口分支
+        if (blobs[i].is_left)
+            dir_avail |= 0x01; // 左侧有线
+        if (abs(blobs[i].center_err) < 40)
+            dir_avail |= 0x02; // 中间有线
+        if (blobs[i].is_right)
+            dir_avail |= 0x04; // 右侧有线
+
+        // 如果遇到单个极宽的黑块 (例如丁字路口、十字路口)
+        if (blobs[i].width >= 5)
+        {
+            dir_avail |= 0x07; // 默认所有方向均可能
+        }
+    }
+
+    // 更新数据
+    gray_data.err_f = best_err_f;
+    last_valid_err_f = best_err_f; // 保存有效值
+
+    // 默认提供强制转弯的极端偏差，当决策函数决定转弯时，PID使用这些值
+    gray_data.err_l = 100;  // 强行偏左
+    gray_data.err_r = -100; // 强行偏右
+
+    // 4. 判定是否为路口 (解决地图1.3相切问题)
+    // 如果不仅仅是只有中间一条线，则认为是路口/分支
+    if (dir_avail > 0x02 || blob_count > 1)
+    {
+        // 组合状态: 高4位是JUNC标志，低4位是可用方向
+        gray_data.flag = GraySensor_FLAG_JUNC | (dir_avail & 0x0F);
+    }
+    else
+    {
+        gray_data.flag = GraySensor_FLAG_NORMAL;
+    }
 }
