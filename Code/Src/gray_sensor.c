@@ -1,4 +1,5 @@
 #include "gray_sensor.h"
+#include "stdlib.h"
 
 #define LOST_THRESHOLD 2000 // 丢线容忍帧数。假设1kHz采样，50帧等于50ms。根据车速调整。
 static uint16_t lost_frame_cnt = 0;
@@ -33,8 +34,6 @@ GraySensor_Data_t *GraySensor_GetData(void)
 {
     return &gray_data;
 }
-
-
 
 /**
  * @brief 底层读取8路复用传感器原始数据
@@ -108,7 +107,7 @@ void GraySensor_Update(void)
             gray_data.err_l = 100;
             gray_data.err_r = -100;
         }
-        return; 
+        return;
     }
     else
     {
@@ -155,43 +154,64 @@ void GraySensor_Update(void)
         }
     }
 
-    // 3. 偏差分配与抗干扰逻辑
+    // --- 3. 偏差分配与动态方向解析 ---
     int16_t best_err_f = 0;
-    int min_diff = 999;
-    uint8_t dir_avail = 0; // 记录路口可用方向: bit0=左, bit1=前, bit2=右
+    int16_t best_err_l = 100; // 默认值，防止没找到块时失效
+    int16_t best_err_r = -100;
+
+    int min_diff_f = 999;
+    uint8_t dir_avail = 0;
 
     for (uint8_t i = 0; i < blob_count; i++)
     {
-        // 寻找与上一次 err_f 最接近的 Blob 作为当前的前进线 (无视突然出现的旁线干扰)
+        // A. 寻找最接近上一次偏差的块作为前进线 (err_f)
         int diff = abs(blobs[i].center_err - last_valid_err_f);
-        if (diff < min_diff)
+        if (diff < min_diff_f)
         {
-            min_diff = diff;
+            min_diff_f = diff;
             best_err_f = blobs[i].center_err;
         }
 
-        // 判断路口分支
-        if (blobs[i].is_left)
-            dir_avail |= 0x01; // 左侧有线
-        if (abs(blobs[i].center_err) < 40)
-            dir_avail |= 0x02; // 中间有线
-        if (blobs[i].is_right)
-            dir_avail |= 0x04; // 右侧有线
-
-        // 如果遇到单个极宽的黑块 (例如丁字路口、十字路口)
-        if (blobs[i].width >= 5)
+        // B. 寻找最靠左的块作为左转引导线 (err_l)
+        // 只有当这个块在中心左侧或触及左边缘时才考虑
+        if (blobs[i].center_err > 10)       //TODO: ensure threshold
         {
-            dir_avail |= 0x07; // 默认所有方向均可能
+            // 找出最左（偏差正值最大）的块
+            if (blobs[i].center_err > best_err_l || best_err_l == 100)
+            {
+                best_err_l = blobs[i].center_err;
+            }
         }
+
+        // C. 寻找最靠右的块作为右转引导线 (err_r)
+        if (blobs[i].center_err < -10)
+        {
+            // 找出最右（偏差负值绝对值最大）的块
+            if (blobs[i].center_err < best_err_r || best_err_r == -100)
+            {
+                best_err_r = blobs[i].center_err;
+            }
+        }
+
+        // D. 路口标志位判定
+        if (blobs[i].is_left)
+            dir_avail |= 0x01;
+        if (abs(blobs[i].center_err) < 40)
+            dir_avail |= 0x02;
+        if (blobs[i].is_right)
+            dir_avail |= 0x04;
+
+        if (blobs[i].width >= 5)
+            dir_avail |= 0x07;
     }
 
-    // 更新数据
+    // 更新输出数据
     gray_data.err_f = best_err_f;
-    last_valid_err_f = best_err_f; // 保存有效值
+    last_valid_err_f = best_err_f;
 
-    // 默认提供强制转弯的极端偏差，当决策函数决定转弯时，PID使用这些值
-    gray_data.err_l = 100;  // 强行偏左
-    gray_data.err_r = -100; // 强行偏右
+    // 现在 err_l 和 err_r 是真实反映左/右分支线位置的动态值了
+    gray_data.err_l = best_err_l;
+    gray_data.err_r = best_err_r;
 
     // 4. 判定是否为路口 (解决地图1.3相切问题)
     // 如果不仅仅是只有中间一条线，则认为是路口/分支
