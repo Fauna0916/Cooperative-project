@@ -144,8 +144,29 @@ void GraySensor_Update(void)
 
                 // 计算质心位置 (0~7)，转换为 -100(最右) 到 100(最左) 的偏差
                 // bit7对应+100, bit0对应-100。公式：err = (center_bit - 3.5) * (200 / 7)
+
+                static const float weight_table[] = {100.0f, 75.0f, 40.0f, 15.0f};
                 float center_bit = (current_blob_start + end) / 2.0f;
-                int16_t err = (int16_t)((3.5f - center_bit) * 28.57f);
+                float dist_from_center = 3.5f - center_bit; // 范围 -3.5 到 +3.5
+
+                int16_t err = 0;
+                float abs_dist = fabs(dist_from_center);
+
+                // --- 非线性权重分配 ---
+                if (abs_dist < 0.1f)
+                    err = 0; // 【修正】绝对中心，不纠偏
+                else if (abs_dist <= 0.5f)
+                    err = 15; // 微小纠偏
+                else if (abs_dist <= 1.5f)
+                    err = 40; // 中度纠偏
+                else if (abs_dist <= 2.5f)
+                    err = 75; // 强力纠偏
+                else
+                    err = 100; // 极限救车
+
+                // 恢复符号
+                if (dist_from_center < 0)
+                    err = -err;
 
                 blobs[blob_count].center_err = err;
                 blobs[blob_count].width = width;
@@ -178,7 +199,7 @@ void GraySensor_Update(void)
 
         // B. 寻找最靠左的块作为左转引导线 (err_l)
         // 只有当这个块在中心左侧或触及左边缘时才考虑
-        if (blobs[i].center_err > 10)       //TODO: ensure threshold
+        if (blobs[i].center_err > 10) // TODO: ensure threshold
         {
             // 找出最左（偏差正值最大）的块
             if (blobs[i].center_err > best_err_l || best_err_l == 100)
