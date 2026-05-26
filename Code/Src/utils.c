@@ -2,7 +2,6 @@
 #include "string.h"
 #include "odometry.h"
 #include "gray_sensor.h"
-
 uint8_t debug_flag = 0;
 
 #define RX_BUF_SIZE 100
@@ -29,13 +28,36 @@ void I2C_VerifyCommunication(I2C_HandleTypeDef *device_I2C, uint16_t device_addr
     }
 }
 
+void GraySensor_DebugPrintf(void)
+{
+    uint8_t raw_data = GraySensor_GetData()->raw_data;
+    printf("Raw: 0x%02X |", raw_data);
+
+    // 从 Bit 7 (左) 循环到 Bit 0 (右)
+    for (int8_t i = 7; i >= 0; i--)
+    {
+        if ((raw_data >> i) & 0x01)
+        {
+            printf("[#]"); // 感应到黑线
+        }
+        else
+        {
+            printf("[ ]"); // 白色地面
+        }
+    }
+
+    printf("| Flag:0x%02X | err_f:%4d\r\n", GraySensor_GetData()->flag, GraySensor_GetData()->err_f);
+}
+
 void debug_info(void)
 {
     if (debug_flag)
     {
         debug_flag = 0;
+        GraySensor_DebugPrintf();
         // printf("letf:%d\r\n", Encoder_GetLeftData()->speed_rpm);
         // printf("right:%d\r\n", Encoder_GetRightData()->speed_rpm);
+
         // //printf("x:%.1f,y:%.1f,radian:%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->theta);
         // printf("[Enc] v:%.3f,w:%.3f\r\n", Encoder_GetLinearVelocity(), Encoder_GetAngularVelocity());
         // printf("[Odo] v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);

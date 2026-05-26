@@ -66,21 +66,28 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = GRAY_AD1_Pin|GRAY_AD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : GRAY_AD0_Pin TFT_BL_Pin TFT_CS_Pin TFT_DC_Pin */
-  GPIO_InitStruct.Pin = GRAY_AD0_Pin|TFT_BL_Pin|TFT_CS_Pin|TFT_DC_Pin;
+  /*Configure GPIO pin : GRAY_AD0_Pin */
+  GPIO_InitStruct.Pin = GRAY_AD0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GRAY_AD0_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : GRAY_OUT_Pin */
   GPIO_InitStruct.Pin = GRAY_OUT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GRAY_OUT_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : TFT_BL_Pin TFT_CS_Pin TFT_DC_Pin */
+  GPIO_InitStruct.Pin = TFT_BL_Pin|TFT_CS_Pin|TFT_DC_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BNO_RST_Pin */
   GPIO_InitStruct.Pin = BNO_RST_Pin;

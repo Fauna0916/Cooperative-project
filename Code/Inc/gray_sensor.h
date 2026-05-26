@@ -19,8 +19,6 @@ typedef struct
     int16_t err_l; 
     int16_t err_r; 
 
-    int16_t current_error; 
-
     uint8_t raw_data; 
 } GraySensor_Data_t;
 

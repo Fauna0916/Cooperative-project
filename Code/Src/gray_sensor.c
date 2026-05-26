@@ -1,9 +1,13 @@
 #include "gray_sensor.h"
 #include "stdlib.h"
 
+// PID 逻辑是“正数向右转  err_f 应该为正
+
 #define LOST_THRESHOLD 2000 // 丢线容忍帧数。假设1kHz采样，50帧等于50ms。根据车速调整。
 static uint16_t lost_frame_cnt = 0;
 GraySensor_Data_t gray_data = {0};
+
+#define SENSOR_BLACK_ACTIVE_LEVEL (1)
 typedef struct
 {
     int16_t center_err; // 该黑块的中心偏差 (-100 到 100)
@@ -37,7 +41,7 @@ GraySensor_Data_t *GraySensor_GetData(void)
 
 /**
  * @brief 底层读取8路复用传感器原始数据
- * @return 8位无符号整数，Bit7对应最左侧传感器，Bit0对应最右侧
+ * @return 8位无符号整数，Bit0对应最左侧传感器，Bit7对应最右侧
  */
 static uint8_t GraySensor_ReadRaw(void)
 {
@@ -62,9 +66,9 @@ static uint8_t GraySensor_ReadRaw(void)
 
         if (bit_val)
         {
-            // 假设通道 1 (i=0) 是最右侧(Bit0)，通道 8 (i=7) 是最左侧(Bit7)
-            // 如果您的硬件安装相反，可改为 raw |= (1 << (7 - i));
-            raw |= (1 << i);
+            // 通道1(i=0) -> Bit 7 (最左)
+            // 通道8(i=7) -> Bit 0 (最右)
+            raw |= (1 << (7 - i));
         }
     }
     return raw;
@@ -141,7 +145,7 @@ void GraySensor_Update(void)
                 // 计算质心位置 (0~7)，转换为 -100(最右) 到 100(最左) 的偏差
                 // bit7对应+100, bit0对应-100。公式：err = (center_bit - 3.5) * (200 / 7)
                 float center_bit = (current_blob_start + end) / 2.0f;
-                int16_t err = (int16_t)((center_bit - 3.5f) * 28.57f);
+                int16_t err = (int16_t)((3.5f - center_bit) * 28.57f);
 
                 blobs[blob_count].center_err = err;
                 blobs[blob_count].width = width;
