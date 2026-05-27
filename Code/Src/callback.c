@@ -1,7 +1,10 @@
 #include "callback.h"
 #include "hcsr04.h"
+#include "radar_driver.h"
 
 extern uint8_t debug_flag;
+extern RadarDriver_t radar_right;
+extern RadarDriver_t radar_left;
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -26,9 +29,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if (huart == &huart2)
-    {
-    }
+    RadarDriver_RxCpltCallback(&radar_right, huart);
+    RadarDriver_RxCpltCallback(&radar_left, huart);
 }
 
 
