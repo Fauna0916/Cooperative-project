@@ -21,7 +21,7 @@ static int16_t last_valid_err_f = 0;
 
 static inline void Multiplexer_Delay(void)
 {
-    // 74HC4051 切换延迟约 20-50ns。400MHz下1个NOP是2.5ns
+    // 切换延迟约 20-50ns。400MHz下1个NOP是2.5ns
     // 循环或NOP指令确保ADC/GPIO读取前电平已稳定
     for (volatile int i = 0; i < 15; i++)
     {

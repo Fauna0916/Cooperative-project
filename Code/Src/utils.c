@@ -54,7 +54,7 @@ void debug_info(void)
     if (debug_flag)
     {
         debug_flag = 0;
-        GraySensor_DebugPrintf();
+        //GraySensor_DebugPrintf();
         // printf("letf:%d\r\n", Encoder_GetLeftData()->speed_rpm);
         // printf("right:%d\r\n", Encoder_GetRightData()->speed_rpm);
 

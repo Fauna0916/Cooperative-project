@@ -1,4 +1,5 @@
 #include "callback.h"
+#include "hcsr04.h"
 
 extern uint8_t debug_flag;
 
@@ -34,6 +35,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     BNO_EXTI_Callback(GPIO_Pin);
+    HCSR04_EXTI_Callback(GPIO_Pin);
 }
 
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
