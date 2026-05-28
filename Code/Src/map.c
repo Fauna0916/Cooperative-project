@@ -3,7 +3,7 @@
 #include "utils.h"
 
 #define X_MOVE_WEIGHT 0.30f // X轴移动权重 30cm
-#define Y_MOVE_WEIGHT 0.50f // Y轴移动权重 50cm
+#define Y_MOVE_WEIGHT 0.70f // Y轴移动权重 50cm
 
 float Predict_Target_Theta(float current_theta, Direction_t action)
 {
@@ -42,7 +42,7 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
     float sign_x = (Odometry_GetState()->x >= 0) ? 1.0f : -1.0f;
     float sign_y = (Odometry_GetState()->y >= 0) ? 1.0f : -1.0f;
 
-    printf("x:%.1f,%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y);
+    //printf("x:%.1f,%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y);
 
     Direction_t best_choice = available_dirs[0];
 
@@ -67,8 +67,7 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
         }
         printf("ava:%d,%f\r\n", available_dirs[i], gain);
     }
-
-    printf("chosen:%d\r\n", best_choice);
+    //printf("chosen:%d\r\n", best_choice);
     return best_choice;
 }
 

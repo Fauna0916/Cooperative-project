@@ -27,6 +27,8 @@ void RadarLogic_Init(void)
     radar_logic.right_confirmed = 0;
 }
 
+
+
 static void RadarLogic_UpdateSide(uint8_t current_detected,
                                   uint8_t *candidate,
                                   uint8_t *stable_count,
@@ -49,6 +51,12 @@ static void RadarLogic_UpdateSide(uint8_t current_detected,
     }
 }
 
+static uint8_t RadarLogic_HasTarget(RadarDriver_t *radar)
+{
+    return ((radar->target_state == 2 || radar->target_state == 3) &&
+            radar->distance_cm < RADAR_DISTANCE_LIMIT_CM);
+}
+
 RadarDecision RadarLogic_Update(RadarLogic_t *logic,
                                 RadarDriver_t *left,
                                 RadarDriver_t *right)
@@ -58,15 +66,27 @@ RadarDecision RadarLogic_Update(RadarLogic_t *logic,
 
     if (RadarDriver_IsValid(left, 300) && left->frame_ok)
     {
-        if (left->target_state != 0 && left->distance_cm < RADAR_DISTANCE_LIMIT_CM)
+        if (RadarLogic_HasTarget(left))
             left_detected = 1;
     }
 
     if (RadarDriver_IsValid(right, 300) && right->frame_ok)
     {
-        if (right->target_state != 0 && right->distance_cm < RADAR_DISTANCE_LIMIT_CM)
+        if (RadarLogic_HasTarget(right))
             right_detected = 1;
     }
+
+    // if (RadarDriver_IsValid(left, 300) && left->frame_ok)
+    // {
+    //     if (left->target_state != 0 && left->distance_cm < RADAR_DISTANCE_LIMIT_CM)
+    //         left_detected = 1;
+    // }
+
+    // if (RadarDriver_IsValid(right, 300) && right->frame_ok)
+    // {
+    //     if (right->target_state != 0 && right->distance_cm < RADAR_DISTANCE_LIMIT_CM)
+    //         right_detected = 1;
+    // }
 
     RadarLogic_UpdateSide(left_detected,
                           &logic->left_candidate,

@@ -1114,6 +1114,11 @@
               <FileType>1</FileType>
               <FilePath>..\Code\Src\st7735.c</FilePath>
             </File>
+            <File>
+              <FileName>lora_tx.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Code\Src\lora_tx.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

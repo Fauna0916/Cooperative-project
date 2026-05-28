@@ -15,10 +15,9 @@ PID_PARA *Tuning;
 // PID_PARA Velocity_loop = {8, 2.75, 0.0};    //outdoors
 PID_PARA Velocity_loop = {20, 2.06, 0.0}; // indoors
 
-// PID_PARA Vision_loop = {0.0159, 0.0, 0.054};
-// PID_PARA Vision_loop = {0.0264, 0.0, 0.20};
+
 // PID_PARA Vision_loop = {0.0215, 0.0, 0.045};
-PID_PARA Vision_loop = {0.01, 0.0, 0.27};
+PID_PARA Vision_loop = {0.01, 0.0, 0.15};
 
 PID_PARA IMU_loop = {2.71, 0.0, 0.08}; // outdorrs
 
@@ -97,7 +96,6 @@ void Control_Init(void)
     PID_Init(&pid_left_motor, Velocity_loop.Kp, Velocity_loop.Ki, Velocity_loop.Kd, 9500.0f, 3000.0f);
     PID_Init(&pid_right_motor, Velocity_loop.Kp, Velocity_loop.Ki, Velocity_loop.Kd, 9500.0f, 3000.0f);
     PID_Init(&pid_imu_heading, IMU_loop.Kp, IMU_loop.Ki, IMU_loop.Kd, 4.0f, 1.0f);
-
 
     PID_Init(&pid_line_follow, Vision_loop.Kp, Vision_loop.Ki, Vision_loop.Kd, 4.0f, 1.0f);
 

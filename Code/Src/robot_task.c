@@ -37,8 +37,9 @@ static float dynamic_throttling(float vision_error)
 {
     float abs_error = fabs(vision_error);
 
-    // Speed = Cruise_Speed - (Error * Drop_Factor)
-    float target_speed = CRUISE_SPEED - (abs_error * 0.20f);
+    float speed_drop = (abs_error * abs_error) / 10000.0f * (CRUISE_SPEED - BOX_ENTRY_SPEED);
+
+    float target_speed = CRUISE_SPEED - speed_drop;
 
     if (target_speed < BOX_ENTRY_SPEED)
     {
@@ -119,6 +120,27 @@ void Execute_Line_Search_Sequence(void)
     }
 }
 
+void dir_display(Direction_t dir)
+{
+    static uint8_t cnt = 0;
+    cnt++;
+    switch (dir)
+    {
+    case Direction_RIGHT:
+        printf("%d, R\r\n",cnt);
+        break;
+    case Direction_FORWARD:
+        printf("%d, F\r\n", cnt);
+        break;
+    case Direction_LEFT:
+        printf("%d, L\r\n", cnt);
+        break;
+    case Direction_NORMAL:
+        printf("%d, NORM\r\n", cnt);
+        break;
+    }
+}
+
 static uint8_t line_stable_count = 0;
 
 void RobotTask_Update(GraySensor_Data_t *gray)
@@ -151,7 +173,7 @@ void RobotTask_Update(GraySensor_Data_t *gray)
         else
         {
             line_stable_count = 0;
-            Execute_Line_Search_Sequence();
+            // Execute_Line_Search_Sequence();
         }
         break;
 
@@ -163,7 +185,7 @@ void RobotTask_Update(GraySensor_Data_t *gray)
             ctx.search_step = 0;
             ctx.search_base_yaw = Odometry_GetState()->theta;
             line_stable_count = 0;
-            is_deciding = false; 
+            is_deciding = false;
             is_executing_junction = false;
         }
         // 2. 遇到岔路口 (0x10 系列)
@@ -186,6 +208,9 @@ void RobotTask_Update(GraySensor_Data_t *gray)
                 {
                     // 窗口填满，进行投票
                     chosen_direction = Get_Most_Frequent_Direction(decision_buffer, JUNC_WINDOW_SIZE);
+                    dir_display(chosen_direction); // TODO: debug
+                    // Control_Stop();
+                    // HAL_Delay(2000);
                     is_deciding = false;
                     is_executing_junction = true;
                 }

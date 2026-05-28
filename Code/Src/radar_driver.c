@@ -7,18 +7,17 @@
 
 static void RadarDriver_ParseFrame(RadarDriver_t *radar)
 {
-    // 这里按你们原来 5 字节协议解析
-    // 假设:
-    // frame[0] = 帧头
-    // frame[1] = target_state
-    // frame[2] = distance high
-    // frame[3] = distance low
-    // frame[4] = 帧尾 / 校验
-    //
-    // 如果你们实际协议不是这样，再换成你原来的解析逻辑
+    if (radar->frame[0] != 0x6E || radar->frame[4] != 0x62)
+    {
+        radar->frame_ok = 0;
+        return;
+    }
 
     radar->target_state = radar->frame[1];
-    radar->distance_cm = ((uint16_t)radar->frame[2] << 8) | radar->frame[3];
+
+    // HLK-LD2410S uses little-endian format
+    radar->distance_cm = ((uint16_t)radar->frame[3] << 8) | radar->frame[2];
+
     radar->frame_ok = 1;
     radar->last_update_tick = HAL_GetTick();
 }
@@ -46,12 +45,33 @@ void RadarDriver_RxCpltCallback(RadarDriver_t *radar, UART_HandleTypeDef *huart)
     if (huart->Instance != radar->huart->Instance)
         return;
 
-    radar->frame[radar->idx++] = radar->rx_byte;
+    uint8_t b = radar->rx_byte;
 
-    if (radar->idx >= 5)
+    // Wait for frame header 0x6E
+    if (radar->idx == 0)
     {
-        RadarDriver_ParseFrame(radar);
-        radar->idx = 0;
+        if (b == 0x6E)
+        {
+            radar->frame[radar->idx++] = b;
+        }
+    }
+    else
+    {
+        radar->frame[radar->idx++] = b;
+
+        if (radar->idx >= 5)
+        {
+            if (radar->frame[4] == 0x62)
+            {
+                RadarDriver_ParseFrame(radar);
+            }
+            else
+            {
+                radar->frame_ok = 0;
+            }
+
+            radar->idx = 0;
+        }
     }
 
     HAL_UART_Receive_IT(radar->huart, (uint8_t *)&radar->rx_byte, 1);

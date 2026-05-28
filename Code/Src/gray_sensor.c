@@ -226,7 +226,7 @@ void GraySensor_Update(void)
         if (blobs[i].is_right)
             dir_avail |= 0x04;
 
-        if (blobs[i].width >= 5)
+        if (blobs[i].width >= 7)
             dir_avail |= 0x07;
     }
 

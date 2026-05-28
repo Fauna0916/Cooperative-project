@@ -288,24 +288,16 @@ void HAL_TIM_Encoder_MspInit(TIM_HandleTypeDef* tim_encoderHandle)
     __HAL_RCC_TIM3_CLK_ENABLE();
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
     /**TIM3 GPIO Configuration
+    PA6     ------> TIM3_CH1
     PA7     ------> TIM3_CH2
-    PC6     ------> TIM3_CH1
     */
-    GPIO_InitStruct.Pin = ENCODER_RIGHT_B_Pin;
+    GPIO_InitStruct.Pin = ENCODER_RIGHT_A_Pin|ENCODER_RIGHT_B_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
-    HAL_GPIO_Init(ENCODER_RIGHT_B_GPIO_Port, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = ENCODER_RIGHT_A_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
-    HAL_GPIO_Init(ENCODER_RIGHT_A_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN TIM3_MspInit 1 */
 
@@ -415,12 +407,10 @@ void HAL_TIM_Encoder_MspDeInit(TIM_HandleTypeDef* tim_encoderHandle)
     __HAL_RCC_TIM3_CLK_DISABLE();
 
     /**TIM3 GPIO Configuration
+    PA6     ------> TIM3_CH1
     PA7     ------> TIM3_CH2
-    PC6     ------> TIM3_CH1
     */
-    HAL_GPIO_DeInit(ENCODER_RIGHT_B_GPIO_Port, ENCODER_RIGHT_B_Pin);
-
-    HAL_GPIO_DeInit(ENCODER_RIGHT_A_GPIO_Port, ENCODER_RIGHT_A_Pin);
+    HAL_GPIO_DeInit(GPIOA, ENCODER_RIGHT_A_Pin|ENCODER_RIGHT_B_Pin);
 
   /* USER CODE BEGIN TIM3_MspDeInit 1 */
 

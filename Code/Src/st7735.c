@@ -1,9 +1,9 @@
 #include "st7735.h"
 #include "font5x7.h"
-#include "stm32h7xx_hal.h"
+#include "spi.h"
 #include <string.h>
 
-extern SPI_HandleTypeDef hspi1;
+#define ST7735_SPI hspi1
 
 
 uint16_t ST7735_WIDTH  = ST7735_TFTWIDTH;
@@ -76,7 +76,7 @@ static void ST7735_WriteCommand(uint8_t cmd)
 {
     TFT_Select();
     TFT_DC_Command();
-    HAL_SPI_Transmit(&hspi1, &cmd, 1, HAL_MAX_DELAY);
+    HAL_SPI_Transmit(&ST7735_SPI, &cmd, 1, HAL_MAX_DELAY);
     TFT_Unselect();
 }
 
@@ -84,7 +84,7 @@ static void ST7735_WriteData(uint8_t *data, uint16_t size)
 {
     TFT_Select();
     TFT_DC_Data();
-    HAL_SPI_Transmit(&hspi1, data, size, HAL_MAX_DELAY);
+    HAL_SPI_Transmit(&ST7735_SPI, data, size, HAL_MAX_DELAY);
     TFT_Unselect();
 }
 
@@ -128,7 +128,7 @@ static void ST7735_WriteColorBurst(uint16_t color, uint32_t len)
     while (len)
     {
         uint16_t chunk = (len > 64) ? 64 : len;
-        HAL_SPI_Transmit(&hspi1, burst, chunk * 2, HAL_MAX_DELAY);
+        HAL_SPI_Transmit(&ST7735_SPI, burst, chunk * 2, HAL_MAX_DELAY);
         len -= chunk;
     }
     TFT_Unselect();
