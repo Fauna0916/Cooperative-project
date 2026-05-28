@@ -2,6 +2,8 @@
 #include "stdlib.h"
 
 // PID 逻辑是“正数向右转  err_f 应该为正
+#define LEFT_ERR (-100)
+#define RIGHT_ERR (100)
 
 #define LOST_THRESHOLD 2000 // 丢线容忍帧数。假设1kHz采样，50帧等于50ms。根据车速调整。
 static uint16_t lost_frame_cnt = 0;
@@ -98,8 +100,8 @@ void GraySensor_Update(void)
             gray_data.err_f = last_valid_err_f;
 
             // 预设转弯偏差（以防主状态机在缓冲期内进路口逻辑）
-            gray_data.err_l = 100;
-            gray_data.err_r = -100;
+            gray_data.err_l = LEFT_ERR;
+            gray_data.err_r = RIGHT_ERR;
         }
         else
         {
@@ -108,8 +110,8 @@ void GraySensor_Update(void)
             gray_data.flag = GraySensor_FLAG_LOST;
             // 这里的 err_f 用于搜线方向引导：往最后一次偏离的方向找
             gray_data.err_f = (last_valid_err_f > 0) ? 100 : -100;
-            gray_data.err_l = 100;
-            gray_data.err_r = -100;
+            gray_data.err_l = LEFT_ERR;
+            gray_data.err_r = RIGHT_ERR;
         }
         return;
     }
@@ -181,8 +183,8 @@ void GraySensor_Update(void)
 
     // --- 3. 偏差分配与动态方向解析 ---
     int16_t best_err_f = 0;
-    int16_t best_err_l = 100; // 默认值，防止没找到块时失效
-    int16_t best_err_r = -100;
+    int16_t best_err_l = LEFT_ERR; // 默认值，防止没找到块时失效
+    int16_t best_err_r = RIGHT_ERR;
 
     int min_diff_f = 999;
     uint8_t dir_avail = 0;
@@ -199,20 +201,20 @@ void GraySensor_Update(void)
 
         // B. 寻找最靠左的块作为左转引导线 (err_l)
         // 只有当这个块在中心左侧或触及左边缘时才考虑
-        if (blobs[i].center_err > 10) // TODO: ensure threshold
+        if (blobs[i].center_err < -10) // TODO: ensure threshold
         {
-            // 找出最左（偏差正值最大）的块
-            if (blobs[i].center_err > best_err_l || best_err_l == 100)
+            // 找出最左的块
+            if (blobs[i].center_err < best_err_l || best_err_l == LEFT_ERR)
             {
                 best_err_l = blobs[i].center_err;
             }
         }
 
         // C. 寻找最靠右的块作为右转引导线 (err_r)
-        if (blobs[i].center_err < -10)
+        if (blobs[i].center_err > 10)
         {
-            // 找出最右（偏差负值绝对值最大）的块
-            if (blobs[i].center_err < best_err_r || best_err_r == -100)
+            // 找出最右（的块
+            if (blobs[i].center_err > best_err_r || best_err_r == RIGHT_ERR)
             {
                 best_err_r = blobs[i].center_err;
             }
@@ -226,7 +228,7 @@ void GraySensor_Update(void)
         if (blobs[i].is_right)
             dir_avail |= 0x04;
 
-        if (blobs[i].width >= 7)
+        if (blobs[i].width >= 5)
             dir_avail |= 0x07;
     }
 

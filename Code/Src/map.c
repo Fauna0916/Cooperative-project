@@ -1,6 +1,7 @@
 #include "map.h"
 #include "gray_sensor.h"
 #include "utils.h"
+#include "st7735.h"
 
 #define X_MOVE_WEIGHT 0.30f // X轴移动权重 30cm
 #define Y_MOVE_WEIGHT 0.70f // Y轴移动权重 50cm
@@ -40,13 +41,16 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
         return Direction_FORWARD;
 
     float sign_x = (Odometry_GetState()->x >= 0) ? 1.0f : -1.0f;
-    float sign_y = (Odometry_GetState()->y >= 0) ? 1.0f : -1.0f;
 
     //printf("x:%.1f,%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y);
 
     Direction_t best_choice = available_dirs[0];
 
     float max_score = -999.0f;
+
+    char buf[40];
+    sprintf(buf, "theta:%.2f", Odometry_GetState()->theta * 57.29578f);
+    ST7735_WriteString(2, 50, buf, ST7735_WHITE, ST7735_BLACK, 1);
 
     for (uint8_t i = 0; i < dir_count; i++)
     {
@@ -56,16 +60,36 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
         float vx = -sinf(pred_theta);
         float vy = cosf(pred_theta);
 
-        // 3. 计算绝对值增长增益
-        // 增益 = (X轴贡献 * X权重) + (Y轴贡献 * Y权重)
-        float gain = (vx * sign_x * X_MOVE_WEIGHT) + (vy * sign_y * Y_MOVE_WEIGHT);
+        // 3. 计算增长增益
+        float gain = (vx * sign_x * X_MOVE_WEIGHT) + (vy * Y_MOVE_WEIGHT);
 
         if (gain > max_score)
         {
             max_score = gain;
             best_choice = available_dirs[i];
         }
+
+        char buf[40];
+        sprintf(buf, "D%d,G:%.1f,x:%.1f,y:%.1f", available_dirs[i], gain, vx, vy);
+        ST7735_WriteString(2, (i+1)*10, buf, ST7735_WHITE, ST7735_BLACK, 1);
+        HAL_Delay(10);
         printf("ava:%d,%f\r\n", available_dirs[i], gain);
+    }
+
+    switch (best_choice)
+    {
+    case Direction_RIGHT:
+        ST7735_WriteString(2, 65, "RIGHT", ST7735_WHITE, ST7735_BLACK, 1);
+        break;
+    case Direction_FORWARD:
+        ST7735_WriteString(2, 65, "FORW", ST7735_WHITE, ST7735_BLACK, 1);
+        break;
+    case Direction_LEFT:
+        ST7735_WriteString(2, 65, "LEFT", ST7735_WHITE, ST7735_BLACK, 1);
+        break;
+    case Direction_NORMAL:
+        ST7735_WriteString(2, 65, "NORMAL", ST7735_WHITE, ST7735_BLACK, 1);
+        break;
     }
     //printf("chosen:%d\r\n", best_choice);
     return best_choice;

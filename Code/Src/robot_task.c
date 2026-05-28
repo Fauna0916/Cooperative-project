@@ -18,7 +18,7 @@ static Robot_Context_t ctx;
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
-#define JUNC_WINDOW_SIZE 20
+#define JUNC_WINDOW_SIZE 10
 static Direction_t decision_buffer[JUNC_WINDOW_SIZE];
 static uint8_t buffer_idx = 0;
 static bool is_deciding = false;

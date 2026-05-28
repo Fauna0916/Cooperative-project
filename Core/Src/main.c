@@ -117,16 +117,15 @@ int main(void)
   MX_SPI1_Init();
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
-  /// HAL_Delay(2000); // wait for peripherals to stabilize
-
   HAL_TIM_Base_Start_IT(&htim7);
 
   Tuning_Init();
-  // BNO080_Init();
+  BNO080_Init();
   GraySensor_Init();
   HCSR04_Init();
-  // ST7735_Init();
-  // LineDisplay_Init();
+  ST7735_Init();
+  ST7735_FillScreen(ST7735_BLACK);
+  //LineDisplay_Init();
   RobotTask_Init();
   /* USER CODE END 2 */
 
@@ -135,16 +134,19 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
   RobotTask_Start();
-
+  //I2C_VerifyCommunication(&BNO080_I2C, BNO080_I2C_ADDR);
   /* USER CODE END 2 */
   while (1)
   {
-    GraySensor_Update();
+    RobotTask_Update(GraySensor_GetData());
+
+    if (BNO080_READY_TO_READ == BNO080_Update())
+    {
+    }
     // HCSR04_TriggerUpdate();
     // printf("%f\r\n", HCSR04_GetDistance());
     // Control_SetLineError(0.0f, GraySensor_GetData()->err_f);
     debug_info();
-    RobotTask_Update(GraySensor_GetData());
     // printf("%d,%x\r\n", GraySensor_GetData()->err_f, GraySensor_GetData()->flag);
 
     // if (OpenMV_FLAG_NORMAL == OpenMV_GetData()->flag)
@@ -186,9 +188,6 @@ int main(void)
     //   Control_SetVelocity(-0.7f, 0.0);
     // }
 
-    // if (BNO080_READY_TO_READ == BNO080_Update())
-    // {
-    // }
 
     /* USER CODE END WHILE */
 

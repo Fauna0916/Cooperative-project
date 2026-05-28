@@ -54,14 +54,14 @@ void debug_info(void)
     if (debug_flag)
     {
         debug_flag = 0;
-        //GraySensor_DebugPrintf();
-        // printf("letf:%d\r\n", Encoder_GetLeftData()->speed_rpm);
-        // printf("right:%d\r\n", Encoder_GetRightData()->speed_rpm);
+        // // GraySensor_DebugPrintf();
+        //  printf("letf:%d\r\n", Encoder_GetLeftData()->speed_rpm);
+        //  printf("right:%d\r\n", Encoder_GetRightData()->speed_rpm);
 
         // //printf("x:%.1f,y:%.1f,radian:%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->theta);
         // printf("[Enc] v:%.3f,w:%.3f\r\n", Encoder_GetLinearVelocity(), Encoder_GetAngularVelocity());
         // printf("[Odo] v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);
-       // printf("Yaw: %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f);
+        printf("Yaw: %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f);
     }
 }
 

@@ -1,6 +1,7 @@
 #include "callback.h"
 #include "hcsr04.h"
 #include "radar_driver.h"
+#include "robot_task.h"
 
 extern uint8_t debug_flag;
 extern RadarDriver_t radar_right;
@@ -8,13 +9,13 @@ extern RadarDriver_t radar_left;
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    if (htim == &htim7) // 0.01s
+    if (htim == &htim7) // 0.001s
     {
+        GraySensor_Update();
         Control_Update();
-
         static uint8_t debug_cnt = 0;
         debug_cnt++;
-        if(debug_cnt >=10)
+        if(debug_cnt >=100)
         {
             debug_cnt = 0;
             debug_flag = 1;
