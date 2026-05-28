@@ -1,4 +1,6 @@
 #include "radar_logic.h"
+#include "stdio.h"
+#include "st7735.h"
 
 #define RADAR_STABLE_THRESHOLD  3
 #define RADAR_DISTANCE_LIMIT_CM 80
@@ -136,45 +138,49 @@ RadarDecision Radar_UpdateAndGetDecision(void)
 
 
 
-// void Debug_PrintDecision(RadarDecision d)
-// {
-//     uint8_t left_ot2 = (HAL_GPIO_ReadPin(RADAR_LEFT_OT2_GPIO_Port, RADAR_LEFT_OT2_Pin) == GPIO_PIN_SET) ? 1 : 0;
-//     uint8_t right_ot2 = (HAL_GPIO_ReadPin(RADAR_RIGHT_OT2_GPIO_Port, RADAR_RIGHT_OT2_Pin) == GPIO_PIN_SET) ? 1 : 0;
+void Debug_PrintDecision(RadarDecision d)
+{
+    uint8_t left_ot2 = (HAL_GPIO_ReadPin(RADAR_LEFT_OT2_GPIO_Port, RADAR_LEFT_OT2_Pin) == GPIO_PIN_SET) ? 1 : 0;
+    uint8_t right_ot2 = (HAL_GPIO_ReadPin(RADAR_RIGHT_OT2_GPIO_Port, RADAR_RIGHT_OT2_Pin) == GPIO_PIN_SET) ? 1 : 0;
 
-//     char msg[220];
+    uint8_t obstacle_locked = d;
+    RadarDecision locked_side = !d;
 
-//     if (d == RADAR_LEFT)
-//     {
-//         sprintf(msg,
-//                 "LEFT  Lg=%d Ls=%d Ld=%d Lc=%d | Rg=%d Rs=%d Rd=%d Rc=%d | lock=%d side=%d\r\n",
-//                 left_ot2, radar_left.target_state, radar_left.distance_cm, radar_logic.left_confirmed,
-//                 right_ot2, radar_right.target_state, radar_right.distance_cm, radar_logic.right_confirmed,
-//                 obstacle_locked, locked_side);
-//     }
-//     else if (d == RADAR_RIGHT)
-//     {
-//         sprintf(msg,
-//                 "RIGHT Lg=%d Ls=%d Ld=%d Lc=%d | Rg=%d Rs=%d Rd=%d Rc=%d | lock=%d side=%d\r\n",
-//                 left_ot2, radar_left.target_state, radar_left.distance_cm, radar_logic.left_confirmed,
-//                 right_ot2, radar_right.target_state, radar_right.distance_cm, radar_logic.right_confirmed,
-//                 obstacle_locked, locked_side);
-//     }
-//     else if (d == RADAR_BOTH)
-//     {
-//         sprintf(msg,
-//                 "BOTH  Lg=%d Ls=%d Ld=%d Lc=%d | Rg=%d Rs=%d Rd=%d Rc=%d | lock=%d side=%d\r\n",
-//                 left_ot2, radar_left.target_state, radar_left.distance_cm, radar_logic.left_confirmed,
-//                 right_ot2, radar_right.target_state, radar_right.distance_cm, radar_logic.right_confirmed,
-//                 obstacle_locked, locked_side);
-//     }
-//     else
-//     {
-//         sprintf(msg,
-//                 "NONE  Lg=%d Ls=%d Ld=%d Lc=%d | Rg=%d Rs=%d Rd=%d Rc=%d | lock=%d side=%d\r\n",
-//                 left_ot2, radar_left.target_state, radar_left.distance_cm, radar_logic.left_confirmed,
-//                 right_ot2, radar_right.target_state, radar_right.distance_cm, radar_logic.right_confirmed,
-//                 obstacle_locked, locked_side);
-//     }
+    char msg[220];
 
-//     HAL_UART_Transmit(&huart1, (uint8_t *)msg, strlen(msg), 100);
-// }
+    if (d == RADAR_LEFT)
+    {
+        sprintf(msg,
+                "LEFT  Lg=%d Ls=%d Ld=%d Lc=%d | Rg=%d Rs=%d Rd=%d Rc=%d | lock=%d side=%d\r\n",
+                left_ot2, radar_left.target_state, radar_left.distance_cm, radar_logic.left_confirmed,
+                right_ot2, radar_right.target_state, radar_right.distance_cm, radar_logic.right_confirmed,
+                obstacle_locked, locked_side);
+    }
+    else if (d == RADAR_RIGHT)
+    {
+        sprintf(msg,
+                "RIGHT Lg=%d Ls=%d Ld=%d Lc=%d | Rg=%d Rs=%d Rd=%d Rc=%d | lock=%d side=%d\r\n",
+                left_ot2, radar_left.target_state, radar_left.distance_cm, radar_logic.left_confirmed,
+                right_ot2, radar_right.target_state, radar_right.distance_cm, radar_logic.right_confirmed,
+                obstacle_locked, locked_side);
+    }
+    else if (d == RADAR_BOTH)
+    {
+        sprintf(msg,
+                "BOTH  Lg=%d Ls=%d Ld=%d Lc=%d | Rg=%d Rs=%d Rd=%d Rc=%d | lock=%d side=%d\r\n",
+                left_ot2, radar_left.target_state, radar_left.distance_cm, radar_logic.left_confirmed,
+                right_ot2, radar_right.target_state, radar_right.distance_cm, radar_logic.right_confirmed,
+                obstacle_locked, locked_side);
+    }
+    else
+    {
+        sprintf(msg,
+                "NONE  Lg=%d Ls=%d Ld=%d Lc=%d | Rg=%d Rs=%d Rd=%d Rc=%d | lock=%d side=%d\r\n",
+                left_ot2, radar_left.target_state, radar_left.distance_cm, radar_logic.left_confirmed,
+                right_ot2, radar_right.target_state, radar_right.distance_cm, radar_logic.right_confirmed,
+                obstacle_locked, locked_side);
+    }
+
+    ST7735_WriteString(1, 5, msg, ST7735_WHITE, ST7735_BLACK, 1);
+    printf("%s", msg);
+}

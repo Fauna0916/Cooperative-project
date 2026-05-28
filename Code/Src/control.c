@@ -257,23 +257,16 @@ void Control_SetIMUHeading(float linear_vel, float target_yaw)
 {
     target_yaw = Math_NormalizeAngle(target_yaw);
 
-    // Only clear the PID if we are JUST transitioning into this mode
+    // 如果目标改变或模式切换，重置PID
     if (current_mode != CTRL_IMU_HEADING || fabs(Math_NormalizeAngleError(target_yaw, final_target_yaw)) > 0.02f)
     {
         PID_Clear(&pid_imu_heading);
-        ramp_target_yaw = Odometry_GetState()->theta;
-        final_target_yaw = target_yaw;
+        final_target_yaw = target_yaw; // 直接记录最终目标
     }
 
     current_mode = CTRL_IMU_HEADING;
     target_linear_v = linear_vel;
-
-    // Set turn speed based on linear velocity
-    // If linear_vel is 0 (stationary turn), use a slower ramp for precision
-    if (linear_vel == 0)
-        yaw_ramp_step = 0.01f;
-    else
-        yaw_ramp_step = 0.02f;
+    // 删除了 yaw_ramp_step 相关逻辑
 }
 
 bool Control_IsHeadingSettled(void)

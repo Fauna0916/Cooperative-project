@@ -138,6 +138,7 @@ int main(void)
   /* USER CODE END 2 */
   while (1)
   {
+
     RobotTask_Update(GraySensor_GetData());
 
     if (BNO080_READY_TO_READ == BNO080_Update())

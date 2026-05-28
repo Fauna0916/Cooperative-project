@@ -1,11 +1,12 @@
 #include "gray_sensor.h"
 #include "stdlib.h"
 
-// PID 逻辑是“正数向右转  err_f 应该为正
+// 左转 <- 负数的 error
+
 #define LEFT_ERR (-100)
 #define RIGHT_ERR (100)
 
-#define LOST_THRESHOLD 2000 // 丢线容忍帧数。假设1kHz采样，50帧等于50ms。根据车速调整。
+#define LOST_THRESHOLD 1000 // 丢线容忍帧数。假设1kHz采样，50帧等于50ms。根据车速调整。
 static uint16_t lost_frame_cnt = 0;
 GraySensor_Data_t gray_data = {0};
 
@@ -43,7 +44,7 @@ GraySensor_Data_t *GraySensor_GetData(void)
 
 /**
  * @brief 底层读取8路复用传感器原始数据
- * @return 8位无符号整数，Bit0对应最左侧传感器，Bit7对应最右侧
+ * @return 8位无符号整数，Bit0对应最右侧传感器，Bit7对应最左侧
  */
 static uint8_t GraySensor_ReadRaw(void)
 {
@@ -109,7 +110,7 @@ void GraySensor_Update(void)
             // 超过阈值，触发真正的 LOST 状态
             gray_data.flag = GraySensor_FLAG_LOST;
             // 这里的 err_f 用于搜线方向引导：往最后一次偏离的方向找
-            gray_data.err_f = (last_valid_err_f > 0) ? 100 : -100;
+            gray_data.err_f = (last_valid_err_f < 0) ? -100 : 100;
             gray_data.err_l = LEFT_ERR;
             gray_data.err_r = RIGHT_ERR;
         }
@@ -145,11 +146,11 @@ void GraySensor_Update(void)
                 uint8_t width = current_blob_start - end + 1;
 
                 // 计算质心位置 (0~7)，转换为 -100(最右) 到 100(最左) 的偏差
-                // bit7对应+100, bit0对应-100。公式：err = (center_bit - 3.5) * (200 / 7)
+                // bit7对应+100, bit0对应-100。公式：err = (center_bit - 3.5) * (100 / 7)
 
                 static const float weight_table[] = {100.0f, 75.0f, 40.0f, 15.0f};
                 float center_bit = (current_blob_start + end) / 2.0f;
-                float dist_from_center = 3.5f - center_bit; // 范围 -3.5 到 +3.5
+                float dist_from_center = center_bit - 3.5f; // 范围 -3.5 到 +3.5
 
                 int16_t err = 0;
                 float abs_dist = fabs(dist_from_center);
@@ -167,7 +168,7 @@ void GraySensor_Update(void)
                     err = 100; // 极限救车
 
                 // 恢复符号
-                if (dist_from_center < 0)
+                if (dist_from_center > 0)
                     err = -err;
 
                 blobs[blob_count].center_err = err;

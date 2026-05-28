@@ -27,4 +27,7 @@ void RadarLogic_Init(void);
 RadarDecision RadarLogic_Update(RadarLogic_t *logic, RadarDriver_t *left, RadarDriver_t *right);
 Direction_t Radar_GetTurnDirection(RadarDecision decision);
 
+RadarDecision Radar_UpdateAndGetDecision(void);
+void Debug_PrintDecision(RadarDecision d);
+
 #endif

@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "utils.h"
+#include "st7735.h"
 
 #define WHEELBASE_OFFSET 0.185f // Distance from camera view center to wheel axis (m)
 #define BACKWARD_OFFSET 0.1f
@@ -13,16 +14,19 @@ static Robot_Context_t ctx;
 
 // Speeds for different track sections
 #define CRUISE_SPEED 0.3f    // m/s for straights and wavy lines
-#define BOX_ENTRY_SPEED 0.1f // m/s when approaching 90-deg corners
-#define TURN_SPEED 0.05f     // 0.0 means pivot-in-place for IMU turns
+#define BOX_ENTRY_SPEED 0.01f // m/s when approaching 90-deg corners
+#define TURN_SPEED 0.01f     // 0.0 means pivot-in-place for IMU turns
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
-#define JUNC_WINDOW_SIZE 10
+#define JUNC_WINDOW_SIZE 5
 static Direction_t decision_buffer[JUNC_WINDOW_SIZE];
 static uint8_t buffer_idx = 0;
 static bool is_deciding = false;
 static bool is_executing_junction = false;
+
+static bool imu_kickstart_done = false;
+static float junction_target_yaw = 0.0f;
 
 static Direction_t chosen_direction = Direction_NORMAL;
 
@@ -127,7 +131,7 @@ void dir_display(Direction_t dir)
     switch (dir)
     {
     case Direction_RIGHT:
-        printf("%d, R\r\n",cnt);
+        printf("%d, R\r\n", cnt);
         break;
     case Direction_FORWARD:
         printf("%d, F\r\n", cnt);
@@ -208,7 +212,22 @@ void RobotTask_Update(GraySensor_Data_t *gray)
                 {
                     // 窗口填满，进行投票
                     chosen_direction = Get_Most_Frequent_Direction(decision_buffer, JUNC_WINDOW_SIZE);
-                    dir_display(chosen_direction); // TODO: debug
+                    // dir_display(chosen_direction); // TODO: debug
+                    // switch (chosen_direction)
+                    // {
+                    // case Direction_RIGHT:
+                    //     ST7735_WriteString(2, 65, "RIGHT", ST7735_WHITE, ST7735_BLACK, 1);
+                    //     break;
+                    // case Direction_FORWARD:
+                    //     ST7735_WriteString(2, 65, "FORW ", ST7735_WHITE, ST7735_BLACK, 1);
+                    //     break;
+                    // case Direction_LEFT:
+                    //     ST7735_WriteString(2, 65, "LEFT ", ST7735_WHITE, ST7735_BLACK, 1);
+                    //     break;
+                    // case Direction_NORMAL:
+                    //     ST7735_WriteString(2, 65, "NORM ", ST7735_WHITE, ST7735_BLACK, 1);
+                    //     break;
+                    // }
                     // Control_Stop();
                     // HAL_Delay(2000);
                     is_deciding = false;
@@ -222,28 +241,52 @@ void RobotTask_Update(GraySensor_Data_t *gray)
             // --- 阶段 B: 执行锁定后的决策 ---
             if (is_executing_junction)
             {
-                int16_t selected_error = 0;
-                float current_speed = TURN_SPEED;
+                // float current_yaw = Odometry_GetState()->theta;
 
-                if (chosen_direction == Direction_LEFT)
-                    selected_error = gray->err_l;
-                else if (chosen_direction == Direction_RIGHT)
-                    selected_error = gray->err_r;
-                else
-                {
-                    selected_error = gray->err_f;
-                    current_speed = BOX_ENTRY_SPEED;
-                }
+                // // 1. 初始化 IMU 目标（仅执行一次）
+                // if (!imu_kickstart_done)
+                // {
+                //     if (chosen_direction == Direction_LEFT)
+                //         junction_target_yaw = Math_NormalizeAngle(current_yaw + PI / 12.0f);
+                //     else if (chosen_direction == Direction_RIGHT)
+                //         junction_target_yaw = Math_NormalizeAngle(current_yaw - PI / 12.0f);
+                //     else
+                //         junction_target_yaw = current_yaw; // 直行不偏转
 
-                // 【自纠错机制】：如果选了转弯，但在该方向上完全看不到线 (假设偏差处于极端值)
-                if (abs(selected_error) > 95 && (gray->raw_data & 0x18))
-                { // 0x18 是中间两个灯
-                    // 可能是误判了，中间线其实很稳。解除锁定，切换回直行
-                    is_executing_junction = false;
-                    return;
-                }
+                //     imu_kickstart_done = true;
+                // }
 
-                Control_SetLineError(current_speed, selected_error);
+                // // 2. 计算当前角度与目标的剩余偏差
+                // float yaw_remain = Math_NormalizeAngleError(junction_target_yaw, current_yaw);
+
+                // // 3. 分阶段执行：前期靠 IMU 强转，后期靠巡线对准
+                // if (chosen_direction != Direction_FORWARD && fabsf(yaw_remain) > 0.06f) // 剩余角度 > 3.5度时
+                // {
+                //     // 【阶段 B1: IMU 强制破局】
+                //     Control_SetIMUHeading(TURN_SPEED * 0.1f, junction_target_yaw);
+                // }
+                // else
+                // {
+                    // 【阶段 B2: 视觉回归对准】
+                    int16_t selected_error = 0;
+                    float current_speed = TURN_SPEED;
+
+                    if (chosen_direction == Direction_LEFT)
+                        selected_error = (int16_t)(gray->err_l * 1.5f); // 此时偏差应已减小，加大倍率对齐
+                    else if (chosen_direction == Direction_RIGHT)
+                        selected_error = (int16_t)(gray->err_r * 1.5f);
+                    else
+                        selected_error = gray->err_f;
+
+                    // // 退出条件：误差基本消除且中心抓到线
+                    // if (abs(selected_error) < 40 && (gray->raw_data & 0x18))
+                    // {
+                    //     is_executing_junction = false;
+                    //     imu_kickstart_done = false; // 重置标志位
+                    //     return;
+                    // }
+                    Control_SetLineError(current_speed, selected_error);
+                //}
             }
         }
         // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
@@ -251,6 +294,7 @@ void RobotTask_Update(GraySensor_Data_t *gray)
         {
             is_deciding = false;
             is_executing_junction = false;
+            imu_kickstart_done = false;
             float dynamic_speed = dynamic_throttling(gray->err_f);
             Control_SetLineError(dynamic_speed, gray->err_f);
         }

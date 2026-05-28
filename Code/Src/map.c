@@ -49,8 +49,8 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
     float max_score = -999.0f;
 
     char buf[40];
-    sprintf(buf, "theta:%.2f", Odometry_GetState()->theta * 57.29578f);
-    ST7735_WriteString(2, 50, buf, ST7735_WHITE, ST7735_BLACK, 1);
+    // sprintf(buf, "theta:%.2f", Odometry_GetState()->theta * 57.29578f);
+    // ST7735_WriteString(2, 50, buf, ST7735_WHITE, ST7735_BLACK, 1);
 
     for (uint8_t i = 0; i < dir_count; i++)
     {
@@ -69,28 +69,13 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
             best_choice = available_dirs[i];
         }
 
-        char buf[40];
-        sprintf(buf, "D%d,G:%.1f,x:%.1f,y:%.1f", available_dirs[i], gain, vx, vy);
-        ST7735_WriteString(2, (i+1)*10, buf, ST7735_WHITE, ST7735_BLACK, 1);
-        HAL_Delay(10);
-        printf("ava:%d,%f\r\n", available_dirs[i], gain);
+        char buf[45];
+        // sprintf(buf, "D%d,G:%.1f,x:%.1f,y:%.1f   ", available_dirs[i], gain, vx, vy);
+        // ST7735_WriteString(2, (i+1)*10, buf, ST7735_WHITE, ST7735_BLACK, 1);
+        // HAL_Delay(10);
+        // printf("ava:%d,%f\r\n", available_dirs[i], gain);
     }
 
-    switch (best_choice)
-    {
-    case Direction_RIGHT:
-        ST7735_WriteString(2, 65, "RIGHT", ST7735_WHITE, ST7735_BLACK, 1);
-        break;
-    case Direction_FORWARD:
-        ST7735_WriteString(2, 65, "FORW", ST7735_WHITE, ST7735_BLACK, 1);
-        break;
-    case Direction_LEFT:
-        ST7735_WriteString(2, 65, "LEFT", ST7735_WHITE, ST7735_BLACK, 1);
-        break;
-    case Direction_NORMAL:
-        ST7735_WriteString(2, 65, "NORMAL", ST7735_WHITE, ST7735_BLACK, 1);
-        break;
-    }
     //printf("chosen:%d\r\n", best_choice);
     return best_choice;
 }
