@@ -12,6 +12,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if (htim == &htim7) // 0.001s
     {
         GraySensor_Update();
+        RobotTask_Update(GraySensor_GetData());
         Control_Update();
         static uint8_t debug_cnt = 0;
         debug_cnt++;
