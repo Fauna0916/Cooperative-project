@@ -2,85 +2,59 @@
 #include <stdio.h>
 #include <string.h>
 
-void LoRaTx_Init(LoRaTx_t *lora,
-                 UART_HandleTypeDef *huart_lora,
-                 UART_HandleTypeDef *huart_debug,
-                 uint16_t target_addr,
-                 uint8_t channel,
-                 uint8_t team_id,
-                 const char *name,
-                 uint32_t fake_start_hour,
-                 uint32_t fake_start_min,
-                 uint32_t fake_start_sec)
+
+static uint8_t lora_tx_buffer[256];
+static bool is_lora_busy = false;
+
+void LoRa_Init(void)
 {
-    lora->huart_lora = huart_lora;
-    lora->huart_debug = huart_debug;
-
-    lora->target_addr = target_addr;
-    lora->channel = channel;
-
-    lora->team_id = team_id;
-    lora->name = name;
-
-    lora->fake_start_hour = fake_start_hour;
-    lora->fake_start_min = fake_start_min;
-    lora->fake_start_sec = fake_start_sec;
-
-    lora->start_tick = 0;
+    is_lora_busy = false;
 }
 
-void LoRaTx_Start(LoRaTx_t *lora)
+
+void LoRa_SendTaskData_NonBlocking(uint32_t start_tick)
 {
-    lora->start_tick = HAL_GetTick();
-}
-
-HAL_StatusTypeDef LoRaTx_SendTask2(LoRaTx_t *lora)
-{
-    char msg[160];
-    uint8_t tx_buf[200];
-    uint16_t msg_len;
-
-    uint32_t elapsed_ms = HAL_GetTick() - lora->start_tick;
-    uint32_t total_sec = elapsed_ms / 1000U;
-
-    uint32_t elapsed_min = total_sec / 60U;
-    uint32_t elapsed_sec = total_sec % 60U;
-
-    uint32_t current_total_sec = lora->fake_start_hour * 3600U
-                               + lora->fake_start_min * 60U
-                               + lora->fake_start_sec
-                               + total_sec;
-
-    uint32_t current_hour = (current_total_sec / 3600U) % 24U;
-    uint32_t current_min  = (current_total_sec % 3600U) / 60U;
-    uint32_t current_sec  = current_total_sec % 60U;
-
-    snprintf(msg, sizeof(msg),
-             "TIME=%02u:%02u:%02u,TEAM=%u,NAME=%s,ELAPSED=%02u:%02u",
-             current_hour,
-             current_min,
-             current_sec,
-             lora->team_id,
-             lora->name,
-             elapsed_min,
-             elapsed_sec);
-
-    msg_len = (uint16_t)strlen(msg);
-
-    // Fixed mode header
-    tx_buf[0] = (uint8_t)((lora->target_addr >> 8) & 0xFF);
-    tx_buf[1] = (uint8_t)(lora->target_addr & 0xFF);
-    tx_buf[2] = lora->channel;
-
-    memcpy(&tx_buf[3], msg, msg_len);
-
-    HAL_StatusTypeDef status = HAL_UART_Transmit(lora->huart_lora, tx_buf, msg_len + 3U, 100);
-
-    if (lora->huart_debug != NULL)
+    if (HAL_UART_GetState(LORA_UART) == HAL_UART_STATE_BUSY_TX || is_lora_busy)
     {
-        HAL_UART_Transmit(lora->huart_debug, (uint8_t *)msg, msg_len, 100);
-        HAL_UART_Transmit(lora->huart_debug, (uint8_t *)"\r\n", 2, 100);
+        return;
     }
 
-    return status;
+    char payload[128];
+    uint32_t current_tick = HAL_GetTick();
+    uint32_t duration_s = (current_tick - start_tick) / 1000;
+    uint16_t min = (uint16_t)(duration_s / 60);
+    uint16_t sec = (uint16_t)(duration_s % 60);
+    uint32_t sys_s = current_tick / 1000;
+
+    // 2. 准备数据负载
+    int payload_len = sprintf(payload, "Gp:%s,Name:%s,Time:%02u:%02u:%02u,Dur:%02d:%02d\r\n",
+                              TEAM_NUMBER, TEAM_NAME,
+                              (unsigned int)((sys_s / 3600) % 24),
+                              (unsigned int)((sys_s / 60) % 60),
+                              (unsigned int)(sys_s % 60),
+                              min, sec);
+
+    // 3. 组装固定模式帧头 [目标地址H, 目标地址L, 信道]
+    lora_tx_buffer[0] = LORA_TARGET_ADDR_H;
+    lora_tx_buffer[1] = LORA_TARGET_ADDR_L;
+    lora_tx_buffer[2] = LORA_CHANNEL;
+
+    // 4. 将负载拷贝到全局缓冲区
+    memcpy(&lora_tx_buffer[3], payload, (size_t)payload_len);
+
+
+    is_lora_busy = true;
+    if (HAL_UART_Transmit_IT(LORA_UART, lora_tx_buffer, (uint16_t)(payload_len + 3)) != HAL_OK)
+    {
+        is_lora_busy = false; 
+    }
+}
+
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == LORA_UART->Instance)
+    {
+        is_lora_busy = false;
+    }
 }

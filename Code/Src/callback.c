@@ -1,6 +1,7 @@
 #include "callback.h"
 #include "hcsr04.h"
 #include "robot_task.h"
+#include "lora_tx.h"
 
 extern uint8_t debug_flag;
 
@@ -28,7 +29,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-
+    HAL_UART_TxCpltCallback(huart);
 }
 
 
