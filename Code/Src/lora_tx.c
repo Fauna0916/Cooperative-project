@@ -56,7 +56,7 @@ HAL_StatusTypeDef LoRaTx_SendTask2(LoRaTx_t *lora)
     uint32_t current_sec  = current_total_sec % 60U;
 
     snprintf(msg, sizeof(msg),
-             "TIME=%02lu:%02lu:%02lu,TEAM=%u,NAME=%s,ELAPSED=%02lu:%02lu",
+             "TIME=%02u:%02u:%02u,TEAM=%u,NAME=%s,ELAPSED=%02u:%02u",
              current_hour,
              current_min,
              current_sec,

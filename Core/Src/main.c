@@ -143,7 +143,7 @@ int main(void)
   {
     Radar_Update();
     Radar_DebugPrint();
-    HAL_Delay(100);
+    HAL_Delay(200);
     // if (BNO080_READY_TO_READ == BNO080_Update())
     // {
     // }

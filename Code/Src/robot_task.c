@@ -212,24 +212,6 @@ void RobotTask_Update(GraySensor_Data_t *gray)
                 {
                     // 窗口填满，进行投票
                     chosen_direction = Get_Most_Frequent_Direction(decision_buffer, JUNC_WINDOW_SIZE);
-                    // dir_display(chosen_direction); // TODO: debug
-                    // switch (chosen_direction)
-                    // {
-                    // case Direction_RIGHT:
-                    //     ST7735_WriteString(2, 65, "RIGHT", ST7735_WHITE, ST7735_BLACK, 1);
-                    //     break;
-                    // case Direction_FORWARD:
-                    //     ST7735_WriteString(2, 65, "FORW ", ST7735_WHITE, ST7735_BLACK, 1);
-                    //     break;
-                    // case Direction_LEFT:
-                    //     ST7735_WriteString(2, 65, "LEFT ", ST7735_WHITE, ST7735_BLACK, 1);
-                    //     break;
-                    // case Direction_NORMAL:
-                    //     ST7735_WriteString(2, 65, "NORM ", ST7735_WHITE, ST7735_BLACK, 1);
-                    //     break;
-                    // }
-                    // Control_Stop();
-                    // HAL_Delay(2000);
                     is_deciding = false;
                     is_executing_junction = true;
                 }

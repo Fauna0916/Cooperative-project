@@ -1,5 +1,6 @@
 #include "radar.h"
 #include "stdio.h"
+#include "string.h"
 
 ALIGN_32BYTES(static uint8_t rx_buf_left[RADAR_RX_BUF_SIZE])
 __attribute__((section(".ARM.__at_0x24040000")));
@@ -16,9 +17,17 @@ static Radar_Data_t data_left = {0};
 static Radar_Data_t data_right = {0};
 
 // filter
+#define RADAR_WINDOW_SIZE 30
+
 static bool is_scanning = false;
-static uint32_t left_obstacle_votes = 0;
-static uint32_t right_obstacle_votes = 0;
+
+static uint8_t history_left[RADAR_WINDOW_SIZE];
+static uint8_t history_right[RADAR_WINDOW_SIZE];
+
+static uint16_t sum_left = 0;
+static uint16_t sum_right = 0;
+
+static uint16_t window_ptr = 0;
 
 /**
  * @brief  初始化雷达，开启 DMA 循环接收
@@ -34,6 +43,12 @@ void Radar_Init(void)
     __HAL_DMA_DISABLE_IT(RADAR_UART_LEFT->hdmarx, DMA_IT_TC);
     __HAL_DMA_DISABLE_IT(RADAR_UART_RIGHT->hdmarx, DMA_IT_TC);
 
+    memset(history_left, 0, sizeof(history_left));
+    memset(history_right, 0, sizeof(history_right));
+    sum_left = 0;
+    sum_right = 0;
+    window_ptr = 0;
+
     read_ptr_left = 0;
     read_ptr_right = 0;
 
@@ -45,8 +60,11 @@ void Radar_Init(void)
  */
 void Radar_StartScanning(void)
 {
-    left_obstacle_votes = 0;
-    right_obstacle_votes = 0;
+    memset(history_left, 0, sizeof(history_left));
+    memset(history_right, 0, sizeof(history_right));
+    sum_left = 0;
+    sum_right = 0;
+    window_ptr = 0;
     is_scanning = true;
 }
 
@@ -58,11 +76,32 @@ void Radar_StopScanning(void)
     is_scanning = false;
 }
 
-/**
- * @brief  私有函数：解析单个雷达的 DMA 环形缓冲区
- */
-static void Parse_Radar_Buffer(UART_HandleTypeDef *huart, uint8_t *rx_buf, uint16_t *read_ptr, Radar_Data_t *output_data)
+static void Push_To_Window(bool is_left_detected, bool is_right_detected)
 {
+    // --- 处理左雷达窗口 ---
+    // 1. 从总和中减去即将被覆盖掉的旧值
+    sum_left -= history_left[window_ptr];
+    // 2. 存入新值
+    history_left[window_ptr] = is_left_detected ? 1 : 0;
+    // 3. 将新值累加到总和
+    sum_left += history_left[window_ptr];
+
+    // --- 处理右雷达窗口 ---
+    sum_right -= history_right[window_ptr];
+    history_right[window_ptr] = is_right_detected ? 1 : 0;
+    sum_right += history_right[window_ptr];
+
+    // --- 移动指针 ---
+    window_ptr++;
+    if (window_ptr >= RADAR_WINDOW_SIZE)
+    {
+        window_ptr = 0; // 回绕
+    }
+}
+
+static bool Parse_Radar_Buffer(UART_HandleTypeDef *huart, uint8_t *rx_buf, uint16_t *read_ptr, Radar_Data_t *output_data)
+{
+    bool found_new_frame = false;
     // 获取当前 DMA 写指针位置 (RADAR_RX_BUF_SIZE 减去 剩余传输量)
     uint16_t write_ptr = RADAR_RX_BUF_SIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx);
 
@@ -97,14 +136,19 @@ static void Parse_Radar_Buffer(UART_HandleTypeDef *huart, uint8_t *rx_buf, uint1
 
                     // 读取完毕，指针直接跳过一帧
                     *read_ptr = (*read_ptr + 5) % RADAR_RX_BUF_SIZE;
+                    found_new_frame = true;
+
                     continue;
                 }
             }
+
         }
 
         // 如果当前字节不是帧头，或者数据不够，或者帧尾不对，读指针前移一字节继续找
         *read_ptr = (*read_ptr + 1) % RADAR_RX_BUF_SIZE;
     }
+
+    return found_new_frame;
 }
 
 void Radar_Update(void)
@@ -130,6 +174,7 @@ void Radar_Update(void)
     // static uint32_t last_print_time = 0;
     // if (HAL_GetTick() - last_print_time > 200)
     // {
+    //     //printf(".\r\n");
     //     last_print_time = HAL_GetTick();
     //     // --- 调试左雷达原始数据 ---
     //     uint16_t write_ptr_l = RADAR_RX_BUF_SIZE - __HAL_DMA_GET_COUNTER(RADAR_UART_LEFT->hdmarx);
@@ -159,33 +204,27 @@ void Radar_Update(void)
     //     //printf("\r\n[Radar] L:%d cm, R:%d cm\r\n", data_left.distance, data_right.distance);
     // }
 
-    Parse_Radar_Buffer(RADAR_UART_LEFT, rx_buf_left, &read_ptr_left, &data_left);
-    Parse_Radar_Buffer(RADAR_UART_RIGHT, rx_buf_right, &read_ptr_right, &data_right);
+    bool new_frame_L = Parse_Radar_Buffer(RADAR_UART_LEFT, rx_buf_left, &read_ptr_left, &data_left);
+    bool new_frame_R = Parse_Radar_Buffer(RADAR_UART_RIGHT, rx_buf_right, &read_ptr_right, &data_right);
 
-    if (is_scanning)
+    if (is_scanning && (new_frame_L || new_frame_R))
     {
-        // 左侧雷达检测到目标且距离在阈值内
-        if (data_left.has_target && data_left.distance > 0 && data_left.distance < RADAR_DETECT_MAX_DIST)
-        {
-            left_obstacle_votes++;
-        }
+        // 判定条件：有目标且在 80cm 范围内
+        bool left_obs = (data_left.has_target && data_left.distance < RADAR_DETECT_MAX_DIST);
+        bool right_obs = (data_right.has_target && data_right.distance < RADAR_DETECT_MAX_DIST);
 
-        // 右侧雷达检测到目标且距离在阈值内
-        if (data_right.has_target && data_right.distance > 0 && data_right.distance < RADAR_DETECT_MAX_DIST)
-        {
-            right_obstacle_votes++;
-        }
+        // 压入滑动窗口历史记录
+        Push_To_Window(left_obs, right_obs);
     }
 }
 
 Direction_t Radar_GetAvoidanceDirection(void)
 {
-    if (left_obstacle_votes > right_obstacle_votes)
+    if (sum_left > sum_right)
     {
         return Direction_RIGHT;
     }
-
-    else if (right_obstacle_votes > left_obstacle_votes)
+    else if (sum_right > sum_left)
     {
         return Direction_LEFT;
     }
@@ -200,7 +239,7 @@ void Radar_DebugPrint(void)
     static uint32_t last_print_time = 0;
 
     // 限制打印频率为 5Hz (200ms 一次)，防止占用过多串口带宽
-    if (HAL_GetTick() - last_print_time < 200)
+    if (HAL_GetTick() - last_print_time < 1000)
         return;
     last_print_time = HAL_GetTick();
 
@@ -209,12 +248,12 @@ void Radar_DebugPrint(void)
     printf("Radar L:[%s] %3dcm, V:%u | ",
            data_left.has_target ? "Y" : "N",
            data_left.distance,
-           left_obstacle_votes);
+           sum_left);
 
     printf("R:[%s] %3dcm, V:%u",
            data_right.has_target ? "Y" : "N",
            data_right.distance,
-           right_obstacle_votes);
+           sum_right);
 
     Direction_t choice = Radar_GetAvoidanceDirection();
     const char *choice_str = (choice == Direction_LEFT) ? "TURN_LEFT" : (choice == Direction_RIGHT) ? "TURN_RIGHT"
