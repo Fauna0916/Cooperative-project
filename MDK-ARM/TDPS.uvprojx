@@ -1015,16 +1015,6 @@
               <FilePath>..\Code\Src\hcsr04.c</FilePath>
             </File>
             <File>
-              <FileName>radar_driver.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Code\Src\radar_driver.c</FilePath>
-            </File>
-            <File>
-              <FileName>radar_logic.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Code\Src\radar_logic.c</FilePath>
-            </File>
-            <File>
               <FileName>line_display.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Code\Src\line_display.c</FilePath>
@@ -1043,6 +1033,16 @@
               <FileName>lora_tx.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Code\Src\lora_tx.c</FilePath>
+            </File>
+            <File>
+              <FileName>radar.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Code\Src\radar.c</FilePath>
+            </File>
+            <File>
+              <FileName>radar.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Code\Inc\radar.h</FilePath>
             </File>
           </Files>
         </Group>

@@ -4,6 +4,7 @@
 #include "main.h"
 #include <stdint.h>
 
+
 typedef struct
 {
     UART_HandleTypeDef *huart_lora;

@@ -1,9 +1,6 @@
 #include "lora_tx.h"
-#include "usart.h"
 #include <stdio.h>
 #include <string.h>
-
-LoRaTx_t lora_tx;
 
 void LoRaTx_Init(LoRaTx_t *lora,
                  UART_HandleTypeDef *huart_lora,
@@ -37,20 +34,6 @@ void LoRaTx_Start(LoRaTx_t *lora)
     lora->start_tick = HAL_GetTick();
 }
 
-void LoRa_Init(void)
-{
-    LoRaTx_Init(&lora_tx,
-                &huart5,
-                &huart2,
-                0x0002,
-                20,
-                6,
-                "Lora_test",
-                12, 0, 0);
-
-    LoRaTx_Start(&lora_tx);
-}
-
 HAL_StatusTypeDef LoRaTx_SendTask2(LoRaTx_t *lora)
 {
     char msg[160];
@@ -73,7 +56,7 @@ HAL_StatusTypeDef LoRaTx_SendTask2(LoRaTx_t *lora)
     uint32_t current_sec  = current_total_sec % 60U;
 
     snprintf(msg, sizeof(msg),
-             "TIME=%02u:%02u:%02u,TEAM=%u,NAME=%s,ELAPSED=%02u:%02u",
+             "TIME=%02lu:%02lu:%02lu,TEAM=%u,NAME=%s,ELAPSED=%02lu:%02lu",
              current_hour,
              current_min,
              current_sec,
