@@ -154,7 +154,7 @@ void RobotTask_Update(GraySensor_Data_t *gray)
     // ---------------------------------------------------------
     // MARKER TRACKING: Update Last Checkpoint
     // ---------------------------------------------------------
-    // ctx.last_passed_marker = Marker_update(); TODO:full map
+    ctx.last_passed_marker = Marker_update();
 
     switch (ctx.current_state)
     {
@@ -324,44 +324,23 @@ void RobotTask_Start(void)
  */
 void RobotTask_AcknowledgePlacement(void)
 {
-    if (ctx.current_state == MISSION_FAULT_LOST_LINE)
+    if (ctx.current_state == MISSION_FAULT_LOST_LINE || ctx.current_state == MISSION_IDLE)
     {
-        // 1. Get the baseline distance of the marker we were placed at
-        float reset_distance = 0.0f;
-        switch (ctx.last_passed_marker)
-        {
-        case MARKER_START:
-            reset_distance = 0.0f;
-            break;
-        case MARKER_1_1:
-            reset_distance = DIST_MARKER_1_1;
-            break;
-        case MARKER_1_2:
-            reset_distance = DIST_MARKER_1_2;
-            break;
-        case MARKER_1_3:
-            reset_distance = DIST_MARKER_1_3;
-            break;
-        case MARKER_1_4:
-            reset_distance = DIST_MARKER_1_4;
-            break;
-        case MARKER_1_5:
-            reset_distance = DIST_MARKER_1_5;
-            break;
-        }
+        // 1. 获取该 Marker 的预设精准状态
+        Marker_Info_t target = MAP_MARKERS[ctx.last_passed_marker];
 
-        // 3. Clear Kinematic PID loops to prevent jerk
+        // 2. 彻底重置里程计到该 Marker 的物理位置
+        Odometry_State_t *odo = Odometry_GetState();
+        odo->x = target.x;
+        odo->y = target.y;
+        odo->distance = target.dist;
+
+        // 4. 清理控制环路
         Control_Init();
+        Radar_Stop(); // 重新开始，先停掉雷达
 
-        Odometry_GetState()->distance = reset_distance;
-
-        // 4. Resume Task
+        // 5. 恢复运行
         ctx.current_state = MISSION_RUNNING;
-        ctx.corner_1_3_cnt = 0;
         Control_SetLineError(CRUISE_SPEED, 0.0f);
-    }
-    else if (ctx.current_state == MISSION_IDLE)
-    {
-        RobotTask_Start();
     }
 }

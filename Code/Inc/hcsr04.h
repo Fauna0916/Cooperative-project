@@ -11,7 +11,6 @@
 #define ECHO_PORT HCSR04_ECHO_GPIO_Port
 #define ECHO_PIN HCSR04_ECHO_Pin
 
-#define OBSTACLE_THRESHOLD_CM 50.0f
 
 void HCSR04_Init(void);
 void HCSR04_TriggerUpdate(void);

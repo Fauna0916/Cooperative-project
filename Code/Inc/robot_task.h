@@ -24,8 +24,6 @@ typedef struct
     uint32_t corner_start_time;
     uint8_t corner_step; // 0 = forward offset, 1 = IMU turn
 
-    uint8_t corner_1_3_cnt;
-
     // search
     uint8_t search_step;   // 0:停止记录, 1:左转, 2:右转, 3:回中, 4:彻底放弃
     float search_base_yaw; // 丢失线时的基础航向

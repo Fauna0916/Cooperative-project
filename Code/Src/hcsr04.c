@@ -1,7 +1,9 @@
 #include "hcsr04.h"
 
+#define OBSTACLE_THRESHOLD_CM 60.0f
+
 static volatile uint16_t echo_start_time = 0;
-static volatile float current_distance_cm = 999.0f; 
+static volatile float current_distance_cm = 999.0f;
 static uint32_t last_trigger_tick = 0;
 
 /**
@@ -46,7 +48,6 @@ void HCSR04_TriggerUpdate(void)
     HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_RESET);
 }
 
-
 void HCSR04_EXTI_Callback(uint16_t GPIO_Pin)
 {
     if (GPIO_Pin == ECHO_PIN)
@@ -76,12 +77,10 @@ void HCSR04_EXTI_Callback(uint16_t GPIO_Pin)
     }
 }
 
-
 float HCSR04_GetDistance(void)
 {
     return current_distance_cm;
 }
-
 
 bool HCSR04_IsObstacleDetected(void)
 {

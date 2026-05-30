@@ -36,9 +36,6 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
     if (junction_flag & 0x04)
         available_dirs[dir_count++] = Direction_RIGHT;      
 
-    // 如果解码错误，默认往前走
-    if (dir_count == 0)
-        return Direction_FORWARD;
 
     float sign_x = (Odometry_GetState()->x >= 0) ? 1.0f : -1.0f;
 
@@ -46,6 +43,9 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
 
     Direction_t best_choice = available_dirs[0];
 
+    // 如果解码错误，默认往前走
+    if (dir_count == 0)
+        return Direction_FORWARD;
     float max_score = -999.0f;
 
     char buf[40];

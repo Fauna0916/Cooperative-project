@@ -18,6 +18,21 @@ typedef enum
     MARKER_1_5
 } Track_Marker_t;
 
+typedef struct
+{
+    float x;
+    float y;   
+    float dist; 
+} Marker_Info_t;
+
+static const Marker_Info_t MAP_MARKERS[] = {
+    [MARKER_START] = {0.0f, 0.0f, 0.0f},
+    [MARKER_1_1] = {-1.5f, 2.0f, DIST_MARKER_1_1},
+    [MARKER_1_2] = {-2.0f, 5.0f, DIST_MARKER_1_2},
+    [MARKER_1_3] = {0.0f, 8.0f, DIST_MARKER_1_3},
+    [MARKER_1_4] = {1.5f, 6.0f, DIST_MARKER_1_4},
+    [MARKER_1_5] = {0.0f, 10.0f, DIST_MARKER_1_5}};
+
 typedef enum
 {
     Direction_RIGHT = -1,
@@ -25,8 +40,6 @@ typedef enum
     Direction_LEFT = 1,
     Direction_NORMAL,
 } Direction_t;
-
-
 
 
 Track_Marker_t Marker_update(void);

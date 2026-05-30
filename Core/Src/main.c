@@ -140,14 +140,15 @@ int main(void)
   /* USER CODE END 2 */
   while (1)
   {
-    Radar_Update();
-    Radar_DebugPrint();
+    // Radar_Update();
+    // Radar_DebugPrint();
     HAL_Delay(200);
     // if (BNO080_READY_TO_READ == BNO080_Update())
     // {
     // }
-    // HCSR04_TriggerUpdate();
-    // printf("%f\r\n", HCSR04_GetDistance());
+    HCSR04_TriggerUpdate();
+    printf("%f\r\n", HCSR04_GetDistance());
+    HAL_Delay(10);
     // Control_SetLineError(0.0f, GraySensor_GetData()->err_f);
     // debug_info();
     // printf("%d,%x\r\n", GraySensor_GetData()->err_f, GraySensor_GetData()->flag);
