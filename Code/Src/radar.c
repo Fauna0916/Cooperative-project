@@ -18,7 +18,7 @@ static Radar_Data_t data_right = {0};
 // filter
 #define RADAR_WINDOW_SIZE 30
 
-static bool is_scanning = false;
+bool is_scanning = false;
 
 static uint8_t history_left[RADAR_WINDOW_SIZE];
 static uint8_t history_right[RADAR_WINDOW_SIZE];
