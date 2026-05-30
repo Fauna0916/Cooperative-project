@@ -92,10 +92,6 @@ void Error_Handler(void);
 #define MOTOR_RIGHT_IN2_GPIO_Port GPIOD
 #define GRAY_AD2_Pin GPIO_PIN_9
 #define GRAY_AD2_GPIO_Port GPIOC
-#define RADAR_RIGHT_OT2_Pin GPIO_PIN_8
-#define RADAR_RIGHT_OT2_GPIO_Port GPIOA
-#define RADAR_LEFT_OT2_Pin GPIO_PIN_9
-#define RADAR_LEFT_OT2_GPIO_Port GPIOA
 #define BNO_RST_Pin GPIO_PIN_4
 #define BNO_RST_GPIO_Port GPIOB
 #define BNO_INT_Pin GPIO_PIN_5

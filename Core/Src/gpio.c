@@ -121,12 +121,6 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(HCSR04_ECHO_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : RADAR_RIGHT_OT2_Pin RADAR_LEFT_OT2_Pin */
-  GPIO_InitStruct.Pin = RADAR_RIGHT_OT2_Pin|RADAR_LEFT_OT2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   /*Configure GPIO pin : BNO_INT_Pin */
   GPIO_InitStruct.Pin = BNO_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;

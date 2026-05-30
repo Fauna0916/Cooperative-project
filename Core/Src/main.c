@@ -137,13 +137,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
   // RobotTask_Start();
   // I2C_VerifyCommunication(&BNO080_I2C, BNO080_I2C_ADDR);
-
+  Radar_Start();
   /* USER CODE END 2 */
   while (1)
   {
-    // Radar_Update();
-    // Radar_DebugPrint();
-    LoRa_SendTaskData_NonBlocking(0);
+    Radar_Update();
+    Radar_DebugPrint();
+    // LoRa_SendTaskData_NonBlocking(0);
     HAL_Delay(10);
     // if (BNO080_READY_TO_READ == BNO080_Update())
     // {
