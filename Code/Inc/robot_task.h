@@ -4,6 +4,7 @@
 #include "gray_sensor.h"
 #include "control.h"
 #include "map.h"
+#include "stdbool.h"
 
 typedef enum
 {

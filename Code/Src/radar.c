@@ -32,7 +32,7 @@ static uint16_t window_ptr = 0;
 /**
  * @brief  初始化雷达，开启 DMA 循环接收
  */
-void Radar_Init(void)
+void Radar_Start(void)
 {
     HAL_UART_Receive_DMA(RADAR_UART_LEFT, rx_buf_left, RADAR_RX_BUF_SIZE);
     HAL_UART_Receive_DMA(RADAR_UART_RIGHT, rx_buf_right, RADAR_RX_BUF_SIZE);
@@ -53,6 +53,27 @@ void Radar_Init(void)
     read_ptr_right = 0;
 
     Radar_StartScanning(); // 默认可不开启，由主状态机调用
+}
+
+void Radar_Stop(void)
+{
+    // 1. 停止两个串口的 DMA 接收
+    HAL_UART_DMAStop(RADAR_UART_LEFT);
+    HAL_UART_DMAStop(RADAR_UART_RIGHT);
+
+    // 2. 逻辑状态复位
+    is_scanning = false;
+
+    // 3. 彻底清空滑动窗口数据
+    memset(history_left, 0, sizeof(history_left));
+    memset(history_right, 0, sizeof(history_right));
+    sum_left = 0;
+    sum_right = 0;
+    window_ptr = 0;
+
+    // 4. 解析指针复位
+    read_ptr_left = 0;
+    read_ptr_right = 0;
 }
 
 /**

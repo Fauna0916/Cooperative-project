@@ -22,7 +22,8 @@ typedef struct
     uint16_t distance;
 } Radar_Data_t;
 
-void Radar_Init(void);
+void Radar_Start(void);
+void Radar_Stop(void);
 
 void Radar_StartScanning(void);
 void Radar_StopScanning(void);

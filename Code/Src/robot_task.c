@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "utils.h"
 #include "st7735.h"
+#include "radar.h"
 
 #define WHEELBASE_OFFSET 0.185f // Distance from camera view center to wheel axis (m)
 #define BACKWARD_OFFSET 0.1f
@@ -13,9 +14,9 @@
 static Robot_Context_t ctx;
 
 // Speeds for different track sections
-#define CRUISE_SPEED 0.3f    // m/s for straights and wavy lines
+#define CRUISE_SPEED 0.3f     // m/s for straights and wavy lines
 #define BOX_ENTRY_SPEED 0.01f // m/s when approaching 90-deg corners
-#define TURN_SPEED 0.01f     // 0.0 means pivot-in-place for IMU turns
+#define TURN_SPEED 0.01f      // 0.0 means pivot-in-place for IMU turns
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
@@ -182,6 +183,17 @@ void RobotTask_Update(GraySensor_Data_t *gray)
         break;
 
     case MISSION_RUNNING:
+    {
+        bool is_in_task3_zone = (ctx.last_passed_marker == MARKER_1_4);
+        static bool radar_running = false;
+        
+        if (is_in_task3_zone && !radar_running)
+        {
+            Radar_Start();
+            Radar_StartScanning();
+            radar_running = true;
+        }
+
         // 1. 彻底丢线
         if (gray->flag == GraySensor_FLAG_LOST) // TrackFlag.LOST
         {
@@ -205,8 +217,14 @@ void RobotTask_Update(GraySensor_Data_t *gray)
 
             if (is_deciding)
             {
-                // 在窗口期内持续计算但不执行大动作
-                decision_buffer[buffer_idx++] = Decide_Shortest_Path(gray->flag);
+                if (is_in_task3_zone)
+                {
+                    decision_buffer[buffer_idx++] = Radar_GetAvoidanceDirection();
+                }
+                else
+                {
+                    decision_buffer[buffer_idx++] = Decide_Shortest_Path(gray->flag);
+                }
 
                 if (buffer_idx >= JUNC_WINDOW_SIZE)
                 {
@@ -214,12 +232,17 @@ void RobotTask_Update(GraySensor_Data_t *gray)
                     chosen_direction = Get_Most_Frequent_Direction(decision_buffer, JUNC_WINDOW_SIZE);
                     is_deciding = false;
                     is_executing_junction = true;
+
+                    if (is_in_task3_zone)
+                    {
+                        Radar_StopScanning();
+                        radar_running = false;
+                    }
                 }
                 // 窗口期内先维持原速直行或微减速
                 Control_SetLineError(BOX_ENTRY_SPEED, gray->err_f);
                 return;
             }
-
             // --- 阶段 B: 执行锁定后的决策 ---
             if (is_executing_junction)
             {
@@ -249,25 +272,25 @@ void RobotTask_Update(GraySensor_Data_t *gray)
                 // }
                 // else
                 // {
-                    // 【阶段 B2: 视觉回归对准】
-                    int16_t selected_error = 0;
-                    float current_speed = TURN_SPEED;
+                // 【阶段 B2: 视觉回归对准】
+                int16_t selected_error = 0;
+                float current_speed = TURN_SPEED;
 
-                    if (chosen_direction == Direction_LEFT)
-                        selected_error = (int16_t)(gray->err_l * 1.5f); // 此时偏差应已减小，加大倍率对齐
-                    else if (chosen_direction == Direction_RIGHT)
-                        selected_error = (int16_t)(gray->err_r * 1.5f);
-                    else
-                        selected_error = gray->err_f;
+                if (chosen_direction == Direction_LEFT)
+                    selected_error = (int16_t)(gray->err_l * 1.5f); // 此时偏差应已减小，加大倍率对齐
+                else if (chosen_direction == Direction_RIGHT)
+                    selected_error = (int16_t)(gray->err_r * 1.5f);
+                else
+                    selected_error = gray->err_f;
 
-                    // // 退出条件：误差基本消除且中心抓到线
-                    // if (abs(selected_error) < 40 && (gray->raw_data & 0x18))
-                    // {
-                    //     is_executing_junction = false;
-                    //     imu_kickstart_done = false; // 重置标志位
-                    //     return;
-                    // }
-                    Control_SetLineError(current_speed, selected_error);
+                // // 退出条件：误差基本消除且中心抓到线
+                // if (abs(selected_error) < 40 && (gray->raw_data & 0x18))
+                // {
+                //     is_executing_junction = false;
+                //     imu_kickstart_done = false; // 重置标志位
+                //     return;
+                // }
+                Control_SetLineError(current_speed, selected_error);
                 //}
             }
         }
@@ -281,6 +304,7 @@ void RobotTask_Update(GraySensor_Data_t *gray)
             Control_SetLineError(dynamic_speed, gray->err_f);
         }
         break;
+    }
     }
 }
 

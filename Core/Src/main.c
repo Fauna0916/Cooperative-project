@@ -137,7 +137,6 @@ int main(void)
   // RobotTask_Start();
   // I2C_VerifyCommunication(&BNO080_I2C, BNO080_I2C_ADDR);
 
-  Radar_Init();
   /* USER CODE END 2 */
   while (1)
   {
