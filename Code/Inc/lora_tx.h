@@ -10,7 +10,6 @@
 #define LORA_UART (&huart5)
 
 
-
 #define TEAM_NUMBER "6"
 #define TEAM_NAME "404 not found"
 

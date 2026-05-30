@@ -15,7 +15,6 @@
 
 #define RADAR_RX_BUF_SIZE 64
 
-
 typedef struct
 {
     bool has_target;   

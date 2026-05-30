@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 
-
 static uint8_t lora_tx_buffer[256];
 static bool is_lora_busy = false;
 
@@ -11,7 +10,7 @@ void LoRa_Init(void)
     is_lora_busy = false;
 }
 
-
+// TODO: USE RTC TIME
 void LoRa_SendTaskData_NonBlocking(uint32_t start_tick)
 {
     if (HAL_UART_GetState(LORA_UART) == HAL_UART_STATE_BUSY_TX || is_lora_busy)
