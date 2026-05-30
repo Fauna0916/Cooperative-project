@@ -2,9 +2,12 @@
 #include "gray_sensor.h"
 #include "utils.h"
 #include "st7735.h"
+#include "robot_task.h"
 
 #define X_MOVE_WEIGHT 0.30f // X轴移动权重 30cm
 #define Y_MOVE_WEIGHT 0.70f // Y轴移动权重 50cm
+
+extern Robot_Context_t ctx;
 
 float Predict_Target_Theta(float current_theta, Direction_t action)
 {
@@ -59,17 +62,32 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
         // 2. 计算该朝向在 X/Y 上的单位分量
         float vx = -sinf(pred_theta);
         float vy = cosf(pred_theta);
+        float gain = 0;
 
         // 3. 计算增长增益
-        float gain = (vx * sign_x * X_MOVE_WEIGHT) + (vy * Y_MOVE_WEIGHT);
-
+        if (ctx.is_target_south)
+        {
+            /*
+               特殊阶段：寻找最接近 180 度（正南）的方向
+               正南时 vy = -1。为了最大化得分，我们取 -vy。
+               当 vy = -1 时，gain = 1 (最大)
+               当 vy = 1  时，gain = -1 (最小)
+            */
+            gain = -vy;
+        }
+        else
+        {
+            gain = (vx * sign_x * X_MOVE_WEIGHT) + (vy * Y_MOVE_WEIGHT);
+        }
+        
+        
         if (gain > max_score)
         {
             max_score = gain;
             best_choice = available_dirs[i];
         }
 
-        char buf[45];
+        //char buf[45];
         // sprintf(buf, "D%d,G:%.1f,x:%.1f,y:%.1f   ", available_dirs[i], gain, vx, vy);
         // ST7735_WriteString(2, (i+1)*10, buf, ST7735_WHITE, ST7735_BLACK, 1);
         // HAL_Delay(10);

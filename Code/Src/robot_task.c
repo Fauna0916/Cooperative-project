@@ -11,7 +11,7 @@
 #define BACKWARD_OFFSET 0.1f
 
 // Task Context Instance
-static Robot_Context_t ctx;
+Robot_Context_t ctx;
 
 // Speeds for different track sections
 #define CRUISE_SPEED 0.3f     // m/s for straights and wavy lines
@@ -156,6 +156,11 @@ void RobotTask_Update(GraySensor_Data_t *gray)
     // ---------------------------------------------------------
     ctx.last_passed_marker = Marker_update();
 
+    if (ctx.last_passed_marker == MARKER_1_4)
+    {
+        ctx.is_target_south = true;
+    }
+
     switch (ctx.current_state)
     {
     case MISSION_IDLE:
@@ -238,6 +243,8 @@ void RobotTask_Update(GraySensor_Data_t *gray)
                         Radar_StopScanning();
                         radar_running = false;
                     }
+
+                    ctx.is_target_south = false;
                 }
                 // 窗口期内先维持原速直行或微减速
                 Control_SetLineError(BOX_ENTRY_SPEED, gray->err_f);
