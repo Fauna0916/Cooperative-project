@@ -18,7 +18,8 @@ typedef struct
 {
     Mission_State_t current_state;
     Track_Marker_t last_passed_marker; // The fallback point
-    bool is_target_south;              // 经过1.4后设为true，执行完转向后设为false
+    bool task3_radar_done;
+    bool is_target_south; // 经过1.4后设为true，执行完转向后设为false
 
     // Variables for 90-deg cornering sequence
     float target_corner_yaw;

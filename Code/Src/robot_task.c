@@ -35,6 +35,7 @@ void RobotTask_Init(void)
 {
     ctx.current_state = MISSION_IDLE;
     ctx.last_passed_marker = MARKER_START;
+    ctx.task3_radar_done = false;
     Control_Init();
 }
 
@@ -125,196 +126,6 @@ void Execute_Line_Search_Sequence(void)
     }
 }
 
-void dir_display(Direction_t dir)
-{
-    static uint8_t cnt = 0;
-    cnt++;
-    switch (dir)
-    {
-    case Direction_RIGHT:
-        printf("%d, R\r\n", cnt);
-        break;
-    case Direction_FORWARD:
-        printf("%d, F\r\n", cnt);
-        break;
-    case Direction_LEFT:
-        printf("%d, L\r\n", cnt);
-        break;
-    case Direction_NORMAL:
-        printf("%d, NORM\r\n", cnt);
-        break;
-    }
-}
-
-static uint8_t line_stable_count = 0;
-
-void RobotTask_Update(GraySensor_Data_t *gray)
-{
-
-    // ---------------------------------------------------------
-    // MARKER TRACKING: Update Last Checkpoint
-    // ---------------------------------------------------------
-    ctx.last_passed_marker = Marker_update();
-
-    if (ctx.last_passed_marker == MARKER_1_4)
-    {
-        ctx.is_target_south = true;
-    }
-
-    switch (ctx.current_state)
-    {
-    case MISSION_IDLE:
-    case MISSION_FINISHED:
-        // Do nothing. Waiting for human button press to resume.
-        Control_Stop();
-        break;
-    case MISSION_FAULT_LOST_LINE:
-        // Control_Stop(); // TODO: temp, should be deleted
-
-        if (gray->flag != GraySensor_FLAG_LOST && abs(gray->err_f) < 95)
-        {
-            if (++line_stable_count > 3)
-            {
-                ctx.current_state = MISSION_RUNNING;
-                Control_SetLineError(BOX_ENTRY_SPEED, gray->err_f);
-                return;
-            }
-        }
-        else
-        {
-            line_stable_count = 0;
-            // Execute_Line_Search_Sequence();
-        }
-        break;
-
-    case MISSION_RUNNING:
-    {
-        bool is_in_task3_zone = (ctx.last_passed_marker == MARKER_1_4);
-        static bool radar_running = false;
-        
-        if (is_in_task3_zone && !radar_running)
-        {
-            Radar_Start();
-            Radar_StartScanning();
-            radar_running = true;
-        }
-
-        // 1. 彻底丢线
-        if (gray->flag == GraySensor_FLAG_LOST) // TrackFlag.LOST
-        {
-            ctx.current_state = MISSION_FAULT_LOST_LINE;
-            ctx.search_step = 0;
-            ctx.search_base_yaw = Odometry_GetState()->theta;
-            line_stable_count = 0;
-            is_deciding = false;
-            is_executing_junction = false;
-        }
-        // 2. 遇到岔路口 (0x10 系列)
-        else if ((gray->flag & 0xF0) == GraySensor_FLAG_JUNC)
-        {
-
-            // --- 阶段 A: 进入决策窗口 ---
-            if (!is_executing_junction && !is_deciding)
-            {
-                is_deciding = true;
-                buffer_idx = 0;
-            }
-
-            if (is_deciding)
-            {
-                if (is_in_task3_zone)
-                {
-                    decision_buffer[buffer_idx++] = Radar_GetAvoidanceDirection();
-                }
-                else
-                {
-                    decision_buffer[buffer_idx++] = Decide_Shortest_Path(gray->flag);
-                }
-
-                if (buffer_idx >= JUNC_WINDOW_SIZE)
-                {
-                    // 窗口填满，进行投票
-                    chosen_direction = Get_Most_Frequent_Direction(decision_buffer, JUNC_WINDOW_SIZE);
-                    is_deciding = false;
-                    is_executing_junction = true;
-
-                    if (is_in_task3_zone)
-                    {
-                        Radar_StopScanning();
-                        radar_running = false;
-                    }
-
-                    ctx.is_target_south = false;
-                }
-                // 窗口期内先维持原速直行或微减速
-                Control_SetLineError(BOX_ENTRY_SPEED, gray->err_f);
-                return;
-            }
-            // --- 阶段 B: 执行锁定后的决策 ---
-            if (is_executing_junction)
-            {
-                // float current_yaw = Odometry_GetState()->theta;
-
-                // // 1. 初始化 IMU 目标（仅执行一次）
-                // if (!imu_kickstart_done)
-                // {
-                //     if (chosen_direction == Direction_LEFT)
-                //         junction_target_yaw = Math_NormalizeAngle(current_yaw + PI / 12.0f);
-                //     else if (chosen_direction == Direction_RIGHT)
-                //         junction_target_yaw = Math_NormalizeAngle(current_yaw - PI / 12.0f);
-                //     else
-                //         junction_target_yaw = current_yaw; // 直行不偏转
-
-                //     imu_kickstart_done = true;
-                // }
-
-                // // 2. 计算当前角度与目标的剩余偏差
-                // float yaw_remain = Math_NormalizeAngleError(junction_target_yaw, current_yaw);
-
-                // // 3. 分阶段执行：前期靠 IMU 强转，后期靠巡线对准
-                // if (chosen_direction != Direction_FORWARD && fabsf(yaw_remain) > 0.06f) // 剩余角度 > 3.5度时
-                // {
-                //     // 【阶段 B1: IMU 强制破局】
-                //     Control_SetIMUHeading(TURN_SPEED * 0.1f, junction_target_yaw);
-                // }
-                // else
-                // {
-                // 【阶段 B2: 视觉回归对准】
-                int16_t selected_error = 0;
-                float current_speed = TURN_SPEED;
-
-                if (chosen_direction == Direction_LEFT)
-                    selected_error = (int16_t)(gray->err_l * 1.5f); // 此时偏差应已减小，加大倍率对齐
-                else if (chosen_direction == Direction_RIGHT)
-                    selected_error = (int16_t)(gray->err_r * 1.5f);
-                else
-                    selected_error = gray->err_f;
-
-                // // 退出条件：误差基本消除且中心抓到线
-                // if (abs(selected_error) < 40 && (gray->raw_data & 0x18))
-                // {
-                //     is_executing_junction = false;
-                //     imu_kickstart_done = false; // 重置标志位
-                //     return;
-                // }
-                Control_SetLineError(current_speed, selected_error);
-                //}
-            }
-        }
-        // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
-        else
-        {
-            is_deciding = false;
-            is_executing_junction = false;
-            imu_kickstart_done = false;
-            float dynamic_speed = dynamic_throttling(gray->err_f);
-            Control_SetLineError(dynamic_speed, gray->err_f);
-        }
-        break;
-    }
-    }
-}
-
 void RobotTask_Start(void)
 {
     is_deciding = false;
@@ -351,3 +162,136 @@ void RobotTask_AcknowledgePlacement(void)
         Control_SetLineError(CRUISE_SPEED, 0.0f);
     }
 }
+
+static uint8_t line_stable_count = 0;
+
+void RobotTask_Update(GraySensor_Data_t *gray)
+{
+
+    // ---------------------------------------------------------
+    // MARKER TRACKING: Update Last Checkpoint
+    // ---------------------------------------------------------
+    ctx.last_passed_marker = Marker_update();
+
+    switch (ctx.current_state)
+    {
+    case MISSION_IDLE:
+    case MISSION_FINISHED:
+        // Do nothing. Waiting for human button press to resume.
+        Control_Stop();
+        break;
+    case MISSION_FAULT_LOST_LINE:
+        // Control_Stop(); // TODO: temp, should be deleted
+
+        if (gray->flag != GraySensor_FLAG_LOST && abs(gray->err_f) < 95)
+        {
+            if (++line_stable_count > 3)
+            {
+                ctx.current_state = MISSION_RUNNING;
+                Control_SetLineError(BOX_ENTRY_SPEED, gray->err_f);
+                return;
+            }
+        }
+        else
+        {
+            line_stable_count = 0;
+            // Execute_Line_Search_Sequence();
+        }
+        break;
+
+    case MISSION_RUNNING:
+    {
+        bool is_in_task3_zone = (ctx.last_passed_marker == MARKER_1_4);
+        static bool radar_running = false;
+
+        if (is_in_task3_zone && !radar_running && !ctx.task3_radar_done)
+        {
+            Radar_Start();
+            radar_running = true;
+        }
+
+        // 1. 彻底丢线
+        if (gray->flag == GraySensor_FLAG_LOST) // TrackFlag.LOST
+        {
+            ctx.current_state = MISSION_FAULT_LOST_LINE;
+            ctx.search_step = 0;
+            ctx.search_base_yaw = Odometry_GetState()->theta;
+            line_stable_count = 0;
+            is_deciding = false;
+            is_executing_junction = false;
+        }
+        // 2. 遇到岔路口 (0x10 系列)
+        else if ((gray->flag & 0xF0) == GraySensor_FLAG_JUNC)
+        {
+
+            // --- 阶段 A: 进入决策窗口 ---
+            if (!is_executing_junction && !is_deciding)
+            {
+                is_deciding = true;
+                buffer_idx = 0;
+            }
+
+            if (is_deciding)
+            {
+                if (is_in_task3_zone && !ctx.task3_radar_done)
+                {
+                    decision_buffer[buffer_idx++] = Radar_GetAvoidanceDirection();
+                }
+                else
+                {
+                    decision_buffer[buffer_idx++] = Decide_Shortest_Path(gray->flag);
+                }
+
+                if (buffer_idx >= JUNC_WINDOW_SIZE)
+                {
+                    // 窗口填满，进行投票
+                    chosen_direction = Get_Most_Frequent_Direction(decision_buffer, JUNC_WINDOW_SIZE);
+                    is_deciding = false;
+                    is_executing_junction = true;
+
+                    ctx.is_target_south = false;
+
+                    if (is_in_task3_zone)
+                    {
+                        Radar_Stop();
+                        radar_running = false;
+                        ctx.task3_radar_done = true;
+
+                        ctx.is_target_south = true;
+                    }
+                }
+                // 窗口期内先维持原速直行或微减速
+                Control_SetLineError(BOX_ENTRY_SPEED, gray->err_f);
+                return;
+            }
+            // --- 阶段 B: 执行锁定后的决策 ---
+            if (is_executing_junction)
+            {
+
+                int16_t selected_error = 0;
+                float current_speed = TURN_SPEED;
+
+                if (chosen_direction == Direction_LEFT)
+                    selected_error = (int16_t)(gray->err_l * 1.5f);
+                else if (chosen_direction == Direction_RIGHT)
+                    selected_error = (int16_t)(gray->err_r * 1.5f);
+                else
+                    selected_error = gray->err_f;
+
+                Control_SetLineError(current_speed, selected_error);
+            }
+        }
+        // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
+        else
+        {
+            is_deciding = false;
+            is_executing_junction = false;
+            imu_kickstart_done = false;
+            float dynamic_speed = dynamic_throttling(gray->err_f);
+            Control_SetLineError(dynamic_speed, gray->err_f);
+        }
+        break;
+    }
+    }
+}
+
