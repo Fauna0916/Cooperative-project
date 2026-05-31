@@ -24,5 +24,6 @@ typedef struct
 
 void GraySensor_Init(void);
 void GraySensor_Update(void);
+void GraySensor_ForceSetLastErr(int16_t forced_err);
 GraySensor_Data_t *GraySensor_GetData(void);
 #endif

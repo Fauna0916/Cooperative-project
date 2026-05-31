@@ -229,7 +229,7 @@ void GraySensor_Update(void)
         if (blobs[i].is_right)
             dir_avail |= 0x04;
 
-        if (blobs[i].width >= 5)
+        if (blobs[i].width >= 6)
             dir_avail |= 0x07;
     }
 
@@ -252,4 +252,9 @@ void GraySensor_Update(void)
     {
         gray_data.flag = GraySensor_FLAG_NORMAL;
     }
+}
+
+void GraySensor_ForceSetLastErr(int16_t forced_err)
+{
+    last_valid_err_f = forced_err;
 }

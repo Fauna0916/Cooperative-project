@@ -1040,9 +1040,9 @@
               <FilePath>..\Code\Src\radar.c</FilePath>
             </File>
             <File>
-              <FileName>radar.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\Code\Inc\radar.h</FilePath>
+              <FileName>ds3231.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Code\Src\ds3231.c</FilePath>
             </File>
           </Files>
         </Group>

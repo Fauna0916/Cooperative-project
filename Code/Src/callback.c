@@ -9,8 +9,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim == &htim7) // 0.001s
     {
-        GraySensor_Update();
-        RobotTask_Update(GraySensor_GetData());
         Control_Update();
         static uint8_t debug_cnt = 0;
         debug_cnt++;
@@ -27,9 +25,14 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     TUNING_RxEventCallback(huart, Size);
 }
 
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    LoRa_UART_TxCpltCallback(huart);
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    HAL_UART_TxCpltCallback(huart);
+
 }
 
 

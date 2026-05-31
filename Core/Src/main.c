@@ -113,7 +113,6 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM7_Init();
   MX_I2C1_Init();
-  MX_USART3_UART_Init();
   MX_TIM6_Init();
   MX_UART4_Init();
   MX_UART8_Init();
@@ -137,22 +136,29 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   /* USER CODE BEGIN 2 */
+
   RobotTask_Start();
   // I2C_VerifyCommunication(&BNO080_I2C, BNO080_I2C_ADDR);
   /* USER CODE END 2 */
   while (1)
   {
-    BNO080_Update();
+    GraySensor_Update();
     HCSR04_TriggerUpdate();
+    BNO080_Update();
+
     if (is_scanning)
+    {
       Radar_Update();
+      //Radar_DebugPrint();
+    }
 
     if (HCSR04_IsObstacleDetected())
     {
-      LoRa_SendTaskData_NonBlocking(0);
+      //LoRa_SendTaskData_NonBlocking(0);
     }
 
-    // debug_info();
+    RobotTask_Update(GraySensor_GetData());
+    debug_info();
 
     /* USER CODE END WHILE */
 

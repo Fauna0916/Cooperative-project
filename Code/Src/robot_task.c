@@ -14,20 +14,17 @@
 Robot_Context_t ctx;
 
 // Speeds for different track sections
-#define CRUISE_SPEED 0.3f     // m/s for straights and wavy lines
-#define BOX_ENTRY_SPEED 0.01f // m/s when approaching 90-deg corners
-#define TURN_SPEED 0.01f      // 0.0 means pivot-in-place for IMU turns
+#define CRUISE_SPEED 0.3f    // m/s for straights and wavy lines
+#define BOX_ENTRY_SPEED 0.2f // m/s when approaching 90-deg corners
+#define TURN_SPEED 0.15f     // 0.0 means pivot-in-place for IMU turns
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
-#define JUNC_WINDOW_SIZE 5
+#define JUNC_WINDOW_SIZE 20
 static Direction_t decision_buffer[JUNC_WINDOW_SIZE];
 static uint8_t buffer_idx = 0;
 static bool is_deciding = false;
 static bool is_executing_junction = false;
-
-static bool imu_kickstart_done = false;
-static float junction_target_yaw = 0.0f;
 
 static Direction_t chosen_direction = Direction_NORMAL;
 
@@ -43,13 +40,13 @@ static float dynamic_throttling(float vision_error)
 {
     float abs_error = fabs(vision_error);
 
-    float speed_drop = (abs_error * abs_error) / 10000.0f * (CRUISE_SPEED - BOX_ENTRY_SPEED);
+    float speed_drop = (abs_error * abs_error) / 10000.0f * (CRUISE_SPEED - TURN_SPEED);
 
     float target_speed = CRUISE_SPEED - speed_drop;
 
-    if (target_speed < BOX_ENTRY_SPEED)
+    if (target_speed < TURN_SPEED)
     {
-        target_speed = BOX_ENTRY_SPEED;
+        target_speed = TURN_SPEED;
     }
     return target_speed;
 }
@@ -203,11 +200,14 @@ void RobotTask_Update(GraySensor_Data_t *gray)
     {
         bool is_in_task3_zone = (ctx.last_passed_marker == MARKER_1_4);
         static bool radar_running = false;
+        char buf[30];
 
         if (is_in_task3_zone && !radar_running && !ctx.task3_radar_done)
         {
             Radar_Start();
             radar_running = true;
+            sprintf(buf, "Radae Start");
+            ST7735_WriteString(5, 2, buf, ST7735_GREEN, ST7735_BLACK, 2);
         }
 
         // 1. 彻底丢线
@@ -221,7 +221,7 @@ void RobotTask_Update(GraySensor_Data_t *gray)
             is_executing_junction = false;
         }
         // 2. 遇到岔路口 (0x10 系列)
-        else if ((gray->flag & 0xF0) == GraySensor_FLAG_JUNC)
+        else if ((gray->flag & 0xF0) == GraySensor_FLAG_JUNC || is_executing_junction)
         {
 
             // --- 阶段 A: 进入决策窗口 ---
@@ -233,13 +233,20 @@ void RobotTask_Update(GraySensor_Data_t *gray)
 
             if (is_deciding)
             {
+                float current_decide_speed = TURN_SPEED; // 默认路口减速
+
                 if (is_in_task3_zone && !ctx.task3_radar_done)
                 {
                     decision_buffer[buffer_idx++] = Radar_GetAvoidanceDirection();
+                    current_decide_speed = 0.0f;
+
+                    sprintf(buf, "Radae Deciding");
+                    ST7735_WriteString(5, 2, buf, ST7735_GREEN, ST7735_BLACK, 2);
                 }
                 else
                 {
                     decision_buffer[buffer_idx++] = Decide_Shortest_Path(gray->flag);
+                    current_decide_speed = TURN_SPEED;
                 }
 
                 if (buffer_idx >= JUNC_WINDOW_SIZE)
@@ -256,27 +263,44 @@ void RobotTask_Update(GraySensor_Data_t *gray)
                         Radar_Stop();
                         radar_running = false;
                         ctx.task3_radar_done = true;
+                        sprintf(buf, "Radae Stop");
+                        ST7735_WriteString(5, 2, buf, ST7735_GREEN, ST7735_BLACK, 2);
 
                         ctx.is_target_south = true;
                     }
                 }
                 // 窗口期内先维持原速直行或微减速
-                Control_SetLineError(BOX_ENTRY_SPEED, gray->err_f);
+                Control_SetLineError(current_decide_speed, gray->err_f);
                 return;
             }
             // --- 阶段 B: 执行锁定后的决策 ---
             if (is_executing_junction)
             {
-
                 int16_t selected_error = 0;
                 float current_speed = TURN_SPEED;
 
                 if (chosen_direction == Direction_LEFT)
-                    selected_error = (int16_t)(gray->err_l * 1.5f);
+                {
+                    selected_error = gray->err_l;
+
+                    if (selected_error < -40)
+                        GraySensor_ForceSetLastErr(selected_error);
+                    else
+                        GraySensor_ForceSetLastErr(-80);
+                }
                 else if (chosen_direction == Direction_RIGHT)
-                    selected_error = (int16_t)(gray->err_r * 1.5f);
+                {
+                    selected_error = gray->err_r;
+                    if (selected_error > 40)
+                        GraySensor_ForceSetLastErr(selected_error);
+                    else
+                        GraySensor_ForceSetLastErr(80);
+                }
                 else
+                {
                     selected_error = gray->err_f;
+                    current_speed = BOX_ENTRY_SPEED;
+                }
 
                 Control_SetLineError(current_speed, selected_error);
             }
@@ -286,7 +310,6 @@ void RobotTask_Update(GraySensor_Data_t *gray)
         {
             is_deciding = false;
             is_executing_junction = false;
-            imu_kickstart_done = false;
             float dynamic_speed = dynamic_throttling(gray->err_f);
             Control_SetLineError(dynamic_speed, gray->err_f);
         }
@@ -294,4 +317,3 @@ void RobotTask_Update(GraySensor_Data_t *gray)
     }
     }
 }
-

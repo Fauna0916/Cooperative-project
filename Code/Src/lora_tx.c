@@ -4,6 +4,7 @@
 
 static uint8_t lora_tx_buffer[256];
 static bool is_lora_busy = false;
+static uint32_t last_trigger_tick = 0;
 
 void LoRa_Init(void)
 {
@@ -13,6 +14,12 @@ void LoRa_Init(void)
 // TODO: USE RTC TIME
 void LoRa_SendTaskData_NonBlocking(uint32_t start_tick)
 {
+    if (HAL_GetTick() - last_trigger_tick < 150)
+    {
+        return;
+    }
+    last_trigger_tick = HAL_GetTick();
+
     if (HAL_UART_GetState(LORA_UART) == HAL_UART_STATE_BUSY_TX || is_lora_busy)
     {
         return;
@@ -49,8 +56,7 @@ void LoRa_SendTaskData_NonBlocking(uint32_t start_tick)
     }
 }
 
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+void LoRa_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == LORA_UART->Instance)
     {

@@ -2,6 +2,7 @@
 #include "string.h"
 #include "odometry.h"
 #include "gray_sensor.h"
+#include "st7735.h"
 uint8_t debug_flag = 0;
 
 #define RX_BUF_SIZE 100
@@ -51,6 +52,8 @@ void GraySensor_DebugPrintf(void)
 
 void debug_info(void)
 {
+    char buf[30];
+
     if (debug_flag)
     {
         debug_flag = 0;
@@ -58,10 +61,12 @@ void debug_info(void)
         //  printf("letf:%d\r\n", Encoder_GetLeftData()->speed_rpm);
         //  printf("right:%d\r\n", Encoder_GetRightData()->speed_rpm);
 
-        // //printf("x:%.1f,y:%.1f,radian:%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->theta);
+        // sprintf(buf, "x:%.1f,y:%.1f,dis:%.1f", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->distance);
+
+        // ST7735_WriteString(5, 2, buf, ST7735_GREEN, ST7735_BLACK, 2);
         // printf("[Enc] v:%.3f,w:%.3f\r\n", Encoder_GetLinearVelocity(), Encoder_GetAngularVelocity());
         // printf("[Odo] v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);
-        printf("Yaw: %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f);
+        //printf("Yaw: %.1f\r\n", BNO080_GetLatestData()->yaw * 57.29578f);
     }
 }
 

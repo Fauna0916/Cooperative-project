@@ -157,11 +157,9 @@ void Control_Update(void)
     {
         final_target_w = PID_Compute(&pid_line_follow, 0.0f, current_line_error);
 
-        // Calculate raw target with cornering penalty
-        float penalty = fabs(final_target_w) * CORNERING_PENALTY_COEFF;
-        float raw_target = target_linear_v - penalty;
+        float raw_target = target_linear_v;
 
-        const float MIN_FORWARD_SPEED = 0.15f; // m/s
+        const float MIN_FORWARD_SPEED = 0.01f; // m/s
 
         if (target_linear_v > 0)
         {

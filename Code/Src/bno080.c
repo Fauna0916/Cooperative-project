@@ -1,14 +1,12 @@
 #include "bno080.h"
 #include <math.h>
 
-
-
 #define QUATERNION_SCALE 0.00006103515625f
 
 ALIGN_32BYTES(uint8_t bno_rx_buffer[BNO_READ_SIZE]) __attribute__((section(".ARM.__at_0x24000000")));
 volatile BNO080_State_t bno_state = BNO080_IDLE;
 static BNO080_Data_t bno_data = {0};
-
+static uint32_t last_trigger_tick = 0;
 
 static void BNO080_EnableGameRotationVector(void)
 {
@@ -55,6 +53,12 @@ void BNO080_Init()
 
 BNO080_State_t BNO080_Update(void)
 {
+    if (HAL_GetTick() - last_trigger_tick < 10)
+    {
+        return bno_state;
+    }
+    last_trigger_tick = HAL_GetTick();
+
     if (bno_state == BNO080_IDLE)
     {
         if (GPIO_PIN_RESET == HAL_GPIO_ReadPin(BNO_INT_GPIO_Port, BNO_INT_Pin))
@@ -109,7 +113,7 @@ BNO080_State_t BNO080_Update(void)
     {
         HAL_I2C_DeInit(&BNO080_I2C);
         HAL_I2C_Init(&BNO080_I2C);
-        BNO080_Init();
+        //BNO080_Init();
         return BNO080_ERROR;
     }
 

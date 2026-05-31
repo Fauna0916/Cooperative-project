@@ -24,7 +24,6 @@ typedef struct
 void Radar_Start(void);
 void Radar_Stop(void);
 
-void Radar_StartScanning(void);
 void Radar_StopScanning(void);
 void Radar_Update(void);
 

@@ -15,7 +15,7 @@
 
 void LoRa_Init(void);
 void LoRa_SendTaskData_NonBlocking(uint32_t start_tick);
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);
+void LoRa_UART_TxCpltCallback(UART_HandleTypeDef *huart);
 
 #endif
 

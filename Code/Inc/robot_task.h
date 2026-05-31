@@ -21,10 +21,6 @@ typedef struct
     bool task3_radar_done;
     bool is_target_south; // 经过1.4后设为true，执行完转向后设为false
 
-    // Variables for 90-deg cornering sequence
-    float target_corner_yaw;
-    uint32_t corner_start_time;
-    uint8_t corner_step; // 0 = forward offset, 1 = IMU turn
 
     // search
     uint8_t search_step;   // 0:停止记录, 1:左转, 2:右转, 3:回中, 4:彻底放弃

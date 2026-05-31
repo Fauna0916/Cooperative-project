@@ -14,7 +14,6 @@ static uint16_t read_ptr_right = 0;
 static Radar_Data_t data_left = {0};
 static Radar_Data_t data_right = {0};
 
-
 // filter
 #define RADAR_WINDOW_SIZE 30
 
@@ -28,6 +27,7 @@ static uint16_t sum_right = 0;
 
 static uint16_t window_ptr = 0;
 
+static uint32_t last_trigger_tick = 0;
 
 void Radar_Start(void)
 {
@@ -49,7 +49,7 @@ void Radar_Start(void)
     read_ptr_left = 0;
     read_ptr_right = 0;
 
-    Radar_StartScanning(); // 默认可不开启，由主状态机调用
+    is_scanning = true;
 }
 
 void Radar_Stop(void)
@@ -70,26 +70,12 @@ void Radar_Stop(void)
 }
 
 /**
- * @brief  开启扫描，清空之前的投票数据
- */
-void Radar_StartScanning(void)
-{
-    memset(history_left, 0, sizeof(history_left));
-    memset(history_right, 0, sizeof(history_right));
-    sum_left = 0;
-    sum_right = 0;
-    window_ptr = 0;
-    is_scanning = true;
-}
-
-/**
  * @brief  停止扫描，冻结投票数据
  */
 void Radar_StopScanning(void)
 {
     is_scanning = false;
 }
-
 
 static void Push_To_Window(bool is_left_detected, bool is_right_detected)
 {
@@ -156,7 +142,6 @@ static bool Parse_Radar_Buffer(UART_HandleTypeDef *huart, uint8_t *rx_buf, uint1
                     continue;
                 }
             }
-
         }
 
         // 如果当前字节不是帧头，或者数据不够，或者帧尾不对，读指针前移一字节继续找
@@ -168,6 +153,12 @@ static bool Parse_Radar_Buffer(UART_HandleTypeDef *huart, uint8_t *rx_buf, uint1
 
 void Radar_Update(void)
 {
+    if (HAL_GetTick() - last_trigger_tick < 125) // 8hz
+    {
+        return;
+    }
+    last_trigger_tick = HAL_GetTick();
+
     if (RADAR_UART_LEFT->ErrorCode != HAL_UART_ERROR_NONE ||
         __HAL_UART_GET_FLAG(RADAR_UART_LEFT, UART_FLAG_ORE))
     {
@@ -187,7 +178,7 @@ void Radar_Update(void)
     }
 
     // static uint32_t last_print_time = 0;
-    // if (HAL_GetTick() - last_print_time > 200)
+    // if (HAL_GetTick() - last_print_time > 500)
     // {
     //     //printf(".\r\n");
     //     last_print_time = HAL_GetTick();
@@ -234,7 +225,7 @@ void Radar_Update(void)
 Direction_t Radar_GetAvoidanceDirection(void)
 {
 
-    if (sum_right > (RADAR_WINDOW_SIZE * 0.4f))
+    if (sum_left > (RADAR_WINDOW_SIZE * 0.4f))
     {
         return Direction_LEFT;
     }
