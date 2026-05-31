@@ -62,7 +62,7 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
         float gain = 0;
 
         // 3. 计算增长增益
-        if (ctx.is_target_south || 1)
+        if (ctx.is_target_south)
         {
             // sprintf(buf, "south");
             // ST7735_WriteString(2, 50, buf, ST7735_WHITE, ST7735_BLACK, 2);
