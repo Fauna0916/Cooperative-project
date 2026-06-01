@@ -7,9 +7,6 @@
 #include "st7735.h"
 #include "radar.h"
 
-#define WHEELBASE_OFFSET 0.185f // Distance from camera view center to wheel axis (m)
-#define BACKWARD_OFFSET 0.1f
-
 // Task Context Instance
 Robot_Context_t ctx;
 
@@ -198,20 +195,21 @@ void RobotTask_Update(GraySensor_Data_t *gray)
 
     case MISSION_RUNNING:
     {
+        static float last_junc_dist = 0.0f;
+        float current_dist = Odometry_GetState()->distance;
+
         bool is_in_task3_zone = (ctx.last_passed_marker == MARKER_1_4);
         static bool radar_running = false;
-        char buf[30];
+        // char buf[30];
 
-        if (is_in_task3_zone && !radar_running && !ctx.task3_radar_done)
-        {
-            Radar_Start();
-            radar_running = true;
-            sprintf(buf, "Radae Start");
-            ST7735_WriteString(5, 2, buf, ST7735_GREEN, ST7735_BLACK, 2);
-        }
+        // 【新增】用于角度锁定的变量
+        static float turn_start_yaw = 0.0f;
+// 设定锁定角度门限：
+// 这个角度既能避开十字路口干扰，又不会在波浪线过度转弯
+#define JUNC_UNLOCK_ANGLE (PI / 3)
 
-        // 1. 彻底丢线
-        if (gray->flag == GraySensor_FLAG_LOST) // TrackFlag.LOST
+        // 1. 彻底丢线 (最高优先级)
+        if (gray->flag == GraySensor_FLAG_LOST)
         {
             ctx.current_state = MISSION_FAULT_LOST_LINE;
             ctx.search_step = 0;
@@ -220,61 +218,23 @@ void RobotTask_Update(GraySensor_Data_t *gray)
             is_deciding = false;
             is_executing_junction = false;
         }
-        // 2. 遇到岔路口 (0x10 系列)
-        else if ((gray->flag & 0xF0) == GraySensor_FLAG_JUNC || is_executing_junction)
+        // 2. 基于“角度锁定”的转向执行逻辑 (★ 核心修改)
+        else if (is_executing_junction)
         {
+            // 计算当前转过的相对角度（考虑 -PI 到 PI 的翻转）
+            float current_yaw = Odometry_GetState()->theta;
+            float yaw_changed = fabs(Math_NormalizeAngle(current_yaw - turn_start_yaw));
 
-            // --- 阶段 A: 进入决策窗口 ---
-            if (!is_executing_junction && !is_deciding)
+            // 如果转角超过 40 度，或者传感器重新变回 NORMAL 状态且已经转了一定角度
+            // 这样做可以兼容 90度直角弯 和 稍微缓一点的圆弧分支
+            if (yaw_changed > JUNC_UNLOCK_ANGLE ||
+                (yaw_changed > (PI / 6) && (gray->flag & 0xF0) != GraySensor_FLAG_JUNC))
             {
-                is_deciding = true;
-                buffer_idx = 0;
+                is_executing_junction = false;
+                last_junc_dist = current_dist;
+                GraySensor_ForceSetLastErr(gray->err_f);
             }
-
-            if (is_deciding)
-            {
-                float current_decide_speed = TURN_SPEED; // 默认路口减速
-
-                if (is_in_task3_zone && !ctx.task3_radar_done)
-                {
-                    decision_buffer[buffer_idx++] = Radar_GetAvoidanceDirection();
-                    current_decide_speed = 0.0f;
-
-                    sprintf(buf, "Radae Deciding");
-                    ST7735_WriteString(5, 2, buf, ST7735_GREEN, ST7735_BLACK, 2);
-                }
-                else
-                {
-                    decision_buffer[buffer_idx++] = Decide_Shortest_Path(gray->flag);
-                    current_decide_speed = TURN_SPEED;
-                }
-
-                if (buffer_idx >= JUNC_WINDOW_SIZE)
-                {
-                    // 窗口填满，进行投票
-                    chosen_direction = Get_Most_Frequent_Direction(decision_buffer, JUNC_WINDOW_SIZE);
-                    is_deciding = false;
-                    is_executing_junction = true;
-
-                    ctx.is_target_south = false;
-
-                    if (is_in_task3_zone)
-                    {
-                        Radar_Stop();
-                        radar_running = false;
-                        ctx.task3_radar_done = true;
-                        sprintf(buf, "Radae Stop");
-                        ST7735_WriteString(5, 2, buf, ST7735_GREEN, ST7735_BLACK, 2);
-
-                        ctx.is_target_south = true;
-                    }
-                }
-                // 窗口期内先维持原速直行或微减速
-                Control_SetLineError(current_decide_speed, gray->err_f);
-                return;
-            }
-            // --- 阶段 B: 执行锁定后的决策 ---
-            if (is_executing_junction)
+            else
             {
                 int16_t selected_error = 0;
                 float current_speed = TURN_SPEED;
@@ -282,7 +242,6 @@ void RobotTask_Update(GraySensor_Data_t *gray)
                 if (chosen_direction == Direction_LEFT)
                 {
                     selected_error = gray->err_l;
-
                     if (selected_error < -40)
                         GraySensor_ForceSetLastErr(selected_error);
                     else
@@ -301,18 +260,87 @@ void RobotTask_Update(GraySensor_Data_t *gray)
                     selected_error = gray->err_f;
                     current_speed = BOX_ENTRY_SPEED;
                 }
-
                 Control_SetLineError(current_speed, selected_error);
+                return;
             }
         }
-        // 3. 正常直线/单路弯道巡线 (NORMAL = 0x00)
-        else
+
+        // 3. 遇到岔路口，且当前未在执行转向 -> 进入决策窗口期
+        if (!is_executing_junction && ((gray->flag & 0xF0) == GraySensor_FLAG_JUNC) &&
+            (current_dist - last_junc_dist > 0.1f))
         {
+            if (!is_deciding)
+            {
+                is_deciding = true;
+                buffer_idx = 0;
+            }
+
+            float current_decide_speed = TURN_SPEED; // 默认路口减速
+
+            if (is_in_task3_zone && !ctx.task3_radar_done)
+            {
+                decision_buffer[buffer_idx++] = Radar_GetAvoidanceDirection();
+                current_decide_speed = 0.0f;
+            }
+            else
+            {
+                decision_buffer[buffer_idx++] = Decide_Shortest_Path(gray->flag);
+            }
+
+            if (buffer_idx >= JUNC_WINDOW_SIZE)
+            {
+                // 窗口填满，进行投票锁定
+                chosen_direction = Get_Most_Frequent_Direction(decision_buffer, JUNC_WINDOW_SIZE);
+                switch (chosen_direction)
+                {
+                case Direction_FORWARD:
+                    printf("Forward\r\n");
+                    break;
+                case Direction_LEFT:
+                    printf("LEFT\r\n");
+                    break;
+                case Direction_RIGHT:
+                    printf("RIGHT\r\n");
+                    break;
+                case Direction_NORMAL:
+                    printf("NORMAL\r\n");
+                    break;
+
+                default:
+                    break;
+                }
+                is_deciding = false;
+                is_executing_junction = true;
+
+                // ★ 记录转弯锁定的起始里程计距离
+                turn_start_yaw = Odometry_GetState()->theta;
+
+                ctx.is_target_south = false;
+                if (is_in_task3_zone)
+                {
+                    Radar_Stop();
+                    radar_running = false;
+                    ctx.task3_radar_done = true;
+                    ctx.is_target_south = true;
+                    // sprintf(buf, "Radar Stop  ");
+                    // ST7735_WriteString(5, 2, buf, ST7735_GREEN, ST7735_BLACK, 2);
+                }
+            }
+            // 决策窗口期内维持降速
+            Control_SetLineError(current_decide_speed, gray->err_f);
+        }
+
+        // 4. 正常直线/弯道/波浪线巡线 (NORMAL = 0x00)
+        else if (!is_executing_junction)
+        {
+            // ★ 如果是在波浪线处发生的短时误判，由于 flag 变回 NORMAL，
+            // 这里的 is_deciding = false 会自动清空决策缓存，起到了完美抗干扰滤波的作用！
             is_deciding = false;
-            is_executing_junction = false;
+
             float dynamic_speed = dynamic_throttling(gray->err_f);
             Control_SetLineError(dynamic_speed, gray->err_f);
         }
+
         break;
     }
     }

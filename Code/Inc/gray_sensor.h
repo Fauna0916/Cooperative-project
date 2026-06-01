@@ -5,6 +5,9 @@
 #include "gpio.h"
 #include "map.h"
 
+#define LEFT_ERR (-100)
+#define RIGHT_ERR (100)
+
 typedef enum
 {
     GraySensor_FLAG_NORMAL = 0x00,

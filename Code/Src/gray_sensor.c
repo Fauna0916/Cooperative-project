@@ -3,9 +3,6 @@
 
 // 左转 <- 负数的 error
 
-#define LEFT_ERR (-100)
-#define RIGHT_ERR (100)
-
 #define LOST_THRESHOLD 1000 // 丢线容忍帧数。假设1kHz采样，50帧等于50ms。根据车速调整。
 static uint16_t lost_frame_cnt = 0;
 GraySensor_Data_t gray_data = {0};
@@ -124,6 +121,7 @@ void GraySensor_Update(void)
     // 2. 连通域分析 (Blob Extraction) —— 解决1.1平行线干扰的核心
     LineBlob_t blobs[4];
     uint8_t blob_count = 0;
+    uint8_t thick_blob_count = 0;
     int current_blob_start = -1;
 
     for (int8_t i = 7; i >= -1; i--) // 从左到右遍历位，多扫描一次-1用于收尾
@@ -177,6 +175,11 @@ void GraySensor_Update(void)
                 blobs[blob_count].is_right = (end <= 2);               // 触及右侧边缘
 
                 blob_count++;
+
+                if (width >= 2)
+                {
+                    thick_blob_count++;
+                }
                 current_blob_start = -1;
             }
         }
@@ -222,15 +225,18 @@ void GraySensor_Update(void)
         }
 
         // D. 路口标志位判定
-        if (blobs[i].is_left)
-            dir_avail |= 0x01;
-        if (abs(blobs[i].center_err) < 40)
-            dir_avail |= 0x02;
-        if (blobs[i].is_right)
-            dir_avail |= 0x04;
+        if (blobs[i].width >= 2)
+        {
+            if (blobs[i].is_left)
+                dir_avail |= 0x01;
+            if (abs(blobs[i].center_err) < 40)
+                dir_avail |= 0x02;
+            if (blobs[i].is_right)
+                dir_avail |= 0x04;
 
-        if (blobs[i].width >= 6)
-            dir_avail |= 0x07;
+            if (blobs[i].width >= 6)
+                dir_avail |= 0x07;
+        }
     }
 
     // 更新输出数据
@@ -243,7 +249,7 @@ void GraySensor_Update(void)
 
     // 4. 判定是否为路口 (解决地图1.3相切问题)
     // 如果不仅仅是只有中间一条线，则认为是路口/分支
-    if (dir_avail > 0x02 || blob_count > 1)
+    if (dir_avail > 0x02 || thick_blob_count > 1)
     {
         // 组合状态: 高4位是JUNC标志，低4位是可用方向
         gray_data.flag = GraySensor_FLAG_JUNC | (dir_avail & 0x0F);

@@ -21,8 +21,8 @@ typedef enum
 typedef struct
 {
     float x;
-    float y;   
-    float dist; 
+    float y;
+    float dist;
 } Marker_Info_t;
 
 static const Marker_Info_t MAP_MARKERS[] = {
