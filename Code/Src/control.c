@@ -15,9 +15,8 @@ PID_PARA *Tuning;
 // PID_PARA Velocity_loop = {8, 2.75, 0.0};    //outdoors
 PID_PARA Velocity_loop = {20, 2.06, 0.0}; // indoors
 
-
-// PID_PARA Vision_loop = {0.0215, 0.0, 0.045};
-PID_PARA Vision_loop = {0.01, 0.0, 0.15};
+//PID_PARA Vision_loop = {0.01, 0.0, 0.15};
+PID_PARA Vision_loop = {0.0193, 0, 15};
 
 PID_PARA IMU_loop = {2.71, 0.0, 0.08}; // outdorrs
 

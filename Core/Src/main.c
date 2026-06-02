@@ -142,7 +142,19 @@ int main(void)
   /* USER CODE END 2 */
   while (1)
   {
-    GraySensor_Update();
+
+    uint32_t tick = HAL_GetTick();
+
+    static uint32_t last_ctrl_tick = 0;
+
+    if (tick - last_ctrl_tick >= 1)
+    {
+      last_ctrl_tick = tick;
+      GraySensor_Update();
+      RobotTask_Update(GraySensor_GetData());
+    }
+
+    
     HCSR04_TriggerUpdate();
     BNO080_Update();
 
@@ -157,7 +169,7 @@ int main(void)
       //LoRa_SendTaskData_NonBlocking(0);
     }
 
-    RobotTask_Update(GraySensor_GetData());
+
     debug_info();
 
     /* USER CODE END WHILE */

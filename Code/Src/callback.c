@@ -12,7 +12,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         Control_Update();
         static uint8_t debug_cnt = 0;
         debug_cnt++;
-        if(debug_cnt >=100)
+        if(debug_cnt >=200)
         {
             debug_cnt = 0;
             debug_flag = 1;

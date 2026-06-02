@@ -61,8 +61,7 @@ void debug_info(void)
         //  printf("letf:%d\r\n", Encoder_GetLeftData()->speed_rpm);
         //  printf("right:%d\r\n", Encoder_GetRightData()->speed_rpm);
 
-        // sprintf(buf, "x:%.1f,y:%.1f,dis:%.1f", Odometry_GetState()->x, Odometry_GetState()->y, Odometry_GetState()->distance);
-
+        // sprintf(buf, "x:%.1f,y:%.1f,the:%.1f", Odometry_GetState()->x, Odometry_GetState()->y, BNO080_GetLatestData()->yaw * 57.29578f);
         // ST7735_WriteString(5, 2, buf, ST7735_GREEN, ST7735_BLACK, 2);
         // printf("[Enc] v:%.3f,w:%.3f\r\n", Encoder_GetLinearVelocity(), Encoder_GetAngularVelocity());
         // printf("[Odo] v:%.3f,w:%.3f\r\n", Odometry_GetState()->linear_vel, Odometry_GetState()->angular_vel);

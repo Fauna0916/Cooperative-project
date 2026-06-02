@@ -28,6 +28,7 @@ void Radar_StopScanning(void);
 void Radar_Update(void);
 
 Direction_t Radar_GetAvoidanceDirection(void);
+Direction_t Radar_LEFT_GetAvoidanceDirection(void);
 void Radar_DebugPrint(void);
 
 #endif

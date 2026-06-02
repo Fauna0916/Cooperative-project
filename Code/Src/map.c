@@ -1,4 +1,5 @@
 #include "map.h"
+#include "math.h"
 #include "gray_sensor.h"
 #include "utils.h"
 #include "st7735.h"
@@ -37,12 +38,7 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
     if (junction_flag & 0x02)
         available_dirs[dir_count++] = Direction_FORWARD;
     if (junction_flag & 0x04)
-        available_dirs[dir_count++] = Direction_RIGHT;      
-
-
-    float sign_x = (Odometry_GetState()->x >= 0) ? 1.0f : -1.0f;
-
-    //printf("x:%.1f,%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y);
+        available_dirs[dir_count++] = Direction_RIGHT;
 
     Direction_t best_choice = available_dirs[0];
 
@@ -51,6 +47,16 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
         return Direction_FORWARD;
     float max_score = -999.0f;
 
+    // float sign_x = (Odometry_GetState()->x >= 0) ? 1.0f : -1.0f;
+    float cur_theta = Odometry_GetState()->theta;
+
+    float sign_x = -1.0;
+    float sign_y = (cosf(cur_theta) > 0.0f) ? 1.0f : -1.0f;
+
+    // cos(theta) 越接近 0，说明车头越指向正左或正右。这里取阈值 0.5 (约上下30度范围内算水平)
+    bool is_heading_horizontal = (fabsf(cosf(cur_theta)) < (PI / 4));
+
+    // printf("x:%.1f,%.1f\r\n", Odometry_GetState()->x, Odometry_GetState()->y);
 
     for (uint8_t i = 0; i < dir_count; i++)
     {
@@ -62,21 +68,13 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
         float gain = 0;
 
         // 3. 计算增长增益
-        if (ctx.is_target_south || 1)
+        if (Odometry_GetState()->y < 2.5f && Odometry_GetState()->x < -2.8)
         {
-            // sprintf(buf, "south");
-            // ST7735_WriteString(2, 50, buf, ST7735_WHITE, ST7735_BLACK, 2);
-            /*
-               特殊阶段：寻找最接近 180 度（正南）的方向
-               正南时 vy = -1。为了最大化得分，我们取 -vy。
-               当 vy = -1 时，gain = 1 (最大)
-               当 vy = 1  时，gain = -1 (最小)
-            */
-            gain = -vy;
+            gain = vx * sign_x;
         }
         else
         {
-            gain = (vx * sign_x * X_MOVE_WEIGHT) + (vy * Y_MOVE_WEIGHT);
+            gain = (vx * sign_x * X_MOVE_WEIGHT) + (vy * sign_y * Y_MOVE_WEIGHT);
         }
 
         if (gain > max_score)
@@ -92,7 +90,7 @@ Direction_t Decide_Shortest_Path(uint8_t junction_flag)
         // printf("ava:%d,%f\r\n", available_dirs[i], gain);
     }
 
-    //printf("chosen:%d\r\n", best_choice);
+    // printf("chosen:%d\r\n", best_choice);
     return best_choice;
 }
 

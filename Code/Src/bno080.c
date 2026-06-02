@@ -113,7 +113,7 @@ BNO080_State_t BNO080_Update(void)
     {
         HAL_I2C_DeInit(&BNO080_I2C);
         HAL_I2C_Init(&BNO080_I2C);
-        //BNO080_Init();
+        BNO080_Init();
         return BNO080_ERROR;
     }
 

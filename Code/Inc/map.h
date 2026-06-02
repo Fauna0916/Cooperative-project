@@ -30,7 +30,7 @@ static const Marker_Info_t MAP_MARKERS[] = {
     [MARKER_1_1] = {-1.5f, 2.0f, DIST_MARKER_1_1},
     [MARKER_1_2] = {-2.0f, 5.0f, DIST_MARKER_1_2},
     [MARKER_1_3] = {0.0f, 8.0f, DIST_MARKER_1_3},
-    [MARKER_1_4] = {4.9f, 4.1f, DIST_MARKER_1_4},
+    [MARKER_1_4] = {-4.9f, 4.1f, DIST_MARKER_1_4},
     [MARKER_1_5] = {0.0f, 10.0f, DIST_MARKER_1_5}};
 
 typedef enum

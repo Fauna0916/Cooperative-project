@@ -224,32 +224,38 @@ void Radar_Update(void)
 
 Direction_t Radar_GetAvoidanceDirection(void)
 {
+// 定义最小确认票数 (例如滑动窗口50次里，必须至少10次看到目标)
+#define MIN_VOTE_THRESHOLD 10
 
-    if (sum_left > (RADAR_WINDOW_SIZE * 0.4f))
+    // 如果左边有稳定的障碍物，且多于右边 -> 向右躲
+    if (sum_left > sum_right && sum_left > MIN_VOTE_THRESHOLD)
+    {
+        return Direction_RIGHT;
+    }
+    // 如果右边有稳定的障碍物，且多于左边 -> 向左躲
+    else if (sum_right > sum_left && sum_right > MIN_VOTE_THRESHOLD)
     {
         return Direction_LEFT;
+    }
+    else
+    {
+        // 双方票数都不够阈值，或者票数一样 -> 返回 NORMAL，让上层继续等
+        return Direction_NORMAL;
+    }
+}
+
+Direction_t Radar_LEFT_GetAvoidanceDirection(void)
+{
+    // 如果超时了，使用左雷达的强制决策 (40%的阈值)
+    if (sum_left > (RADAR_WINDOW_SIZE * 0.4f))
+    {
+        return Direction_LEFT; // 你的原代码写的是检测到了返回LEFT，按你的逻辑来
     }
     else
     {
         return Direction_RIGHT;
     }
 }
-
-// Direction_t Radar_GetAvoidanceDirection(void)
-// {
-//     if (sum_left > sum_right)
-//     {
-//         return Direction_RIGHT;
-//     }
-//     else if (sum_right > sum_left)
-//     {
-//         return Direction_LEFT;
-//     }
-//     else
-//     {
-//         return Direction_NORMAL;
-//     }
-// }
 
 void Radar_DebugPrint(void)
 {

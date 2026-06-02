@@ -19,7 +19,6 @@ typedef struct
     Mission_State_t current_state;
     Track_Marker_t last_passed_marker; // The fallback point
     bool task3_radar_done;
-    bool is_target_south; // 经过1.4后设为true，执行完转向后设为false
 
     // search
     uint8_t search_step;   // 0:停止记录, 1:左转, 2:右转, 3:回中, 4:彻底放弃
