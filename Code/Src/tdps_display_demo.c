@@ -2,6 +2,7 @@
 #include "gray_sensor.h"
 #include "radar.h"
 #include "odometry.h"
+#include "robot_task.h"
 #include "st7735.h"
 #include <stdio.h>
 #include <string.h>
@@ -59,11 +60,12 @@ static void disp_update_page_state(void)
         scan_true_since = 0;
     }
 
-    /* State transitions */
+    /* State transitions — suppress RADAR page during pre-scan */
     if (current_page == DISP_PAGE_LINE)
     {
         if (scanning && scan_true_since != 0 &&
-            (now - scan_true_since) >= RADAR_ACTIVATE_MS)
+            (now - scan_true_since) >= RADAR_ACTIVATE_MS &&
+            !RobotTask_IsPreScanActive())
         {
             current_page = DISP_PAGE_RADAR;
             disp_force_redraw();

@@ -81,6 +81,11 @@ static void PreScan_Update(void)
     }
 }
 
+bool RobotTask_IsPreScanActive(void)
+{
+    return pre_scan_active;
+}
+
 /* ================================================================ */
 
 void RobotTask_Init(void)
