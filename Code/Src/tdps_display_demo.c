@@ -44,7 +44,14 @@ static void disp_force_redraw(void)
 
 static void disp_update_page_state(void)
 {
-    bool scanning = Radar_IsScanning();
+    /*
+     * Mask out pre-scan radar activity — the display must not react to
+     * is_scanning until the pre-scan phase has finished.  This keeps the
+     * LINE page visible during the 5 s sampling window and lets the
+     * 500-ms RADAR_ACTIVATE timer start from zero when (and if) radar
+     * stays running afterwards.
+     */
+    bool scanning = Radar_IsScanning() && !RobotTask_IsPreScanActive();
     uint32_t now = HAL_GetTick();
 
     /* Rising edge: scanning just started */
@@ -60,12 +67,11 @@ static void disp_update_page_state(void)
         scan_true_since = 0;
     }
 
-    /* State transitions — suppress RADAR page during pre-scan */
+    /* State transitions */
     if (current_page == DISP_PAGE_LINE)
     {
         if (scanning && scan_true_since != 0 &&
-            (now - scan_true_since) >= RADAR_ACTIVATE_MS &&
-            !RobotTask_IsPreScanActive())
+            (now - scan_true_since) >= RADAR_ACTIVATE_MS)
         {
             current_page = DISP_PAGE_RADAR;
             disp_force_redraw();
