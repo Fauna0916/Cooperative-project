@@ -11,9 +11,9 @@
 Robot_Context_t ctx;
 
 // Speeds for different track sections
-#define CRUISE_SPEED 0.3f    // m/s for straights and wavy lines
+#define CRUISE_SPEED 0.25f   // m/s for straights and wavy lines
 #define BOX_ENTRY_SPEED 0.2f // m/s when approaching 90-deg corners
-#define TURN_SPEED 0.2f      // 0.0 means pivot-in-place for IMU turns
+#define TURN_SPEED 0.1f      // 0.0 means pivot-in-place for IMU turns
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
@@ -35,17 +35,17 @@ static Direction_t chosen_direction = Direction_NORMAL;
  * window to keep timing consistent.
  * ================================================================ */
 
-#define PRE_SCAN_DURATION_MS  5000U
+#define PRE_SCAN_DURATION_MS 1000U
 
 static uint32_t pre_scan_start_tick = 0;
-static bool     pre_scan_active     = false;
+static bool pre_scan_active = false;
 
 static void PreScan_Start(void)
 {
     pre_scan_start_tick = HAL_GetTick();
-    pre_scan_active     = true;
-    ctx.pre_scan_valid  = false;
-    ctx.pre_scan_dir    = Direction_NORMAL;
+    pre_scan_active = true;
+    ctx.pre_scan_valid = false;
+    ctx.pre_scan_dir = Direction_NORMAL;
     Radar_Start();
 }
 
@@ -63,8 +63,8 @@ static void PreScan_Update(void)
     {
         /* Got a stable direction — record and stop radar */
         ctx.pre_scan_valid = true;
-        ctx.pre_scan_dir   = vote;
-        pre_scan_active    = false;
+        ctx.pre_scan_dir = vote;
+        pre_scan_active = false;
         Radar_Stop();
         return;
     }
@@ -74,8 +74,8 @@ static void PreScan_Update(void)
     if ((now - pre_scan_start_tick) >= PRE_SCAN_DURATION_MS)
     {
         ctx.pre_scan_valid = false;
-        ctx.pre_scan_dir   = Direction_NORMAL;
-        pre_scan_active    = false;
+        ctx.pre_scan_dir = Direction_NORMAL;
+        pre_scan_active = false;
         /* Radar keeps running — live Radar_GetAvoidanceDirection()
            will be used in the task-3 junction window */
     }
@@ -84,6 +84,11 @@ static void PreScan_Update(void)
 bool RobotTask_IsPreScanActive(void)
 {
     return pre_scan_active;
+}
+
+bool RobotTask_IsInTask3Zone(void)
+{
+    return (ctx.last_passed_marker == MARKER_1_4) && !ctx.task3_radar_done;
 }
 
 /* ================================================================ */
