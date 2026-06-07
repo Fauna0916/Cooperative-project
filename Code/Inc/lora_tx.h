@@ -15,6 +15,7 @@
 
 void LoRa_Init(void);
 void LoRa_SendTaskData_NonBlocking(uint32_t start_tick);
+void LoRa_ProcessArchTrigger(bool arch_detected, uint32_t start_tick);
 void LoRa_UART_TxCpltCallback(UART_HandleTypeDef *huart);
 
 #endif

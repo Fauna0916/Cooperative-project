@@ -40,6 +40,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     BNO_EXTI_Callback(GPIO_Pin);
     HCSR04_EXTI_Callback(GPIO_Pin);
+
+    /* Key1 (PC13) — active-high button: trigger Task 3 radar zone */
+    if (GPIO_Pin == GPIO_PIN_13)
+    {
+        RobotTask_TriggerTask3();
+    }
 }
 
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)

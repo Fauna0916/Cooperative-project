@@ -108,6 +108,40 @@ void RobotTask_AcknowledgePlacement(void)
     }
 }
 
+/**
+ * @brief  Key1 (PC13) handler — relocate odometry to MARKER_1_4,
+ *         enable task-3 radar zone, and start radar scanning.
+ * @note   Called from EXTI callback (active-high button press).
+ */
+void RobotTask_TriggerTask3(void)
+{
+    /* 1. Relocate odometry to MARKER_1_4 preset position */
+    Marker_Info_t target = MAP_MARKERS[MARKER_1_4];
+    Odometry_State_t *odo = Odometry_GetState();
+    odo->x = target.x;
+    odo->y = target.y;
+    odo->distance = target.dist;
+
+    /* 2. Update mission context */
+    ctx.last_passed_marker = MARKER_1_4;
+    ctx.task3_radar_done = false;
+
+    /* 3. Reset junction state machine */
+    is_deciding = false;
+    is_executing_junction = false;
+    buffer_idx = 0;
+
+    /* 4. Start radar scanning */
+    Radar_Start();
+
+    /* 5. Ensure we are in running state */
+    if (ctx.current_state == MISSION_IDLE || ctx.current_state == MISSION_FAULT_LOST_LINE)
+    {
+        ctx.current_state = MISSION_RUNNING;
+        Control_SetLineError(CRUISE_SPEED, 0.0f);
+    }
+}
+
 static uint8_t line_stable_count = 0;
 
 void RobotTask_Update(GraySensor_Data_t *gray)

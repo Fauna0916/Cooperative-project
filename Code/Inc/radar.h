@@ -31,4 +31,13 @@ Direction_t Radar_GetAvoidanceDirection(void);
 Direction_t Radar_LEFT_GetAvoidanceDirection(void);
 void Radar_DebugPrint(void);
 
+/* --- Data accessors for TFT display --- */
+uint16_t Radar_GetLeftDistance(void);
+uint16_t Radar_GetRightDistance(void);
+bool Radar_GetLeftHasTarget(void);
+bool Radar_GetRightHasTarget(void);
+uint16_t Radar_GetLeftVotes(void);
+uint16_t Radar_GetRightVotes(void);
+bool Radar_IsScanning(void);
+
 #endif

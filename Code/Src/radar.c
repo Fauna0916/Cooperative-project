@@ -283,3 +283,42 @@ void Radar_DebugPrint(void)
 
     printf("\r\n=> Decision: %s\r\n", choice_str);
 }
+
+/* ================================================================
+ * Data accessors for TFT display
+ * ================================================================ */
+
+uint16_t Radar_GetLeftDistance(void)
+{
+    return data_left.distance;
+}
+
+uint16_t Radar_GetRightDistance(void)
+{
+    return data_right.distance;
+}
+
+bool Radar_GetLeftHasTarget(void)
+{
+    return data_left.has_target;
+}
+
+bool Radar_GetRightHasTarget(void)
+{
+    return data_right.has_target;
+}
+
+uint16_t Radar_GetLeftVotes(void)
+{
+    return sum_left;
+}
+
+uint16_t Radar_GetRightVotes(void)
+{
+    return sum_right;
+}
+
+bool Radar_IsScanning(void)
+{
+    return is_scanning;
+}

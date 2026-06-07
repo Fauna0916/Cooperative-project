@@ -29,5 +29,6 @@ void RobotTask_Init(void);
 void RobotTask_Start(void);
 void RobotTask_Update(GraySensor_Data_t *gray);
 void RobotTask_AcknowledgePlacement(void); // Called by EXTI User Button
+void RobotTask_TriggerTask3(void);         // Key1: relocate to MARKER_1_4 + radar scan
 
 #endif

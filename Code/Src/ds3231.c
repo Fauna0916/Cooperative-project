@@ -2,7 +2,7 @@
 
 #define DS3231_ADDR (0x68 << 1)
 
-extern I2C_HandleTypeDef hi2c1;
+extern I2C_HandleTypeDef hi2c2;
 
 static uint8_t BCD2DEC(uint8_t val)
 {
@@ -18,7 +18,7 @@ HAL_StatusTypeDef DS3231_GetTime(DS3231_Time *time)
 {
     uint8_t data[7];
 
-    HAL_StatusTypeDef ret = HAL_I2C_Mem_Read(&hi2c1,
+    HAL_StatusTypeDef ret = HAL_I2C_Mem_Read(&hi2c2,
                                              DS3231_ADDR,
                                              0x00,
                                              I2C_MEMADD_SIZE_8BIT,
@@ -59,7 +59,7 @@ HAL_StatusTypeDef DS3231_SetTime(uint8_t year,
     data[5] = DEC2BCD(month);
     data[6] = DEC2BCD(year);
 
-    return HAL_I2C_Mem_Write(&hi2c1,
+    return HAL_I2C_Mem_Write(&hi2c2,
                              DS3231_ADDR,
                              0x00,
                              I2C_MEMADD_SIZE_8BIT,
