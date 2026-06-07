@@ -20,6 +20,10 @@ typedef struct
     Track_Marker_t last_passed_marker; // The fallback point
     bool task3_radar_done;
 
+    /* Pre-scan: 5 s radar sampling at mission start / Key1 */
+    Direction_t pre_scan_dir;   // remembered obstacle side from pre-scan
+    bool        pre_scan_valid; // true if pre-scan produced a valid direction
+
     // search
     uint8_t search_step;   // 0:停止记录, 1:左转, 2:右转, 3:回中, 4:彻底放弃
     float search_base_yaw; // 丢失线时的基础航向

@@ -25,6 +25,64 @@ static bool is_executing_junction = false;
 
 static Direction_t chosen_direction = Direction_NORMAL;
 
+/* ================================================================
+ * Radar Pre-Scan (5 s at mission start / Key1)
+ * ================================================================
+ * Samples radar votes for PRE_SCAN_DURATION_MS.
+ * If a valid LEFT/RIGHT direction is obtained, it is remembered
+ * in ctx.pre_scan_dir and used later in the task-3 zone instead
+ * of live radar voting — but still going through the deciding
+ * window to keep timing consistent.
+ * ================================================================ */
+
+#define PRE_SCAN_DURATION_MS  5000U
+
+static uint32_t pre_scan_start_tick = 0;
+static bool     pre_scan_active     = false;
+
+static void PreScan_Start(void)
+{
+    pre_scan_start_tick = HAL_GetTick();
+    pre_scan_active     = true;
+    ctx.pre_scan_valid  = false;
+    ctx.pre_scan_dir    = Direction_NORMAL;
+    Radar_Start();
+}
+
+static void PreScan_Update(void)
+{
+    if (!pre_scan_active)
+        return;
+
+    uint32_t now = HAL_GetTick();
+
+    /* Check for early valid vote before timeout */
+    Direction_t vote = Radar_GetAvoidanceDirection();
+
+    if (vote == Direction_LEFT || vote == Direction_RIGHT)
+    {
+        /* Got a stable direction — record and stop radar */
+        ctx.pre_scan_valid = true;
+        ctx.pre_scan_dir   = vote;
+        pre_scan_active    = false;
+        Radar_Stop();
+        return;
+    }
+
+    /* Timeout with no valid direction —
+       leave radar running so the live-voting fallback path works */
+    if ((now - pre_scan_start_tick) >= PRE_SCAN_DURATION_MS)
+    {
+        ctx.pre_scan_valid = false;
+        ctx.pre_scan_dir   = Direction_NORMAL;
+        pre_scan_active    = false;
+        /* Radar keeps running — live Radar_GetAvoidanceDirection()
+           will be used in the task-3 junction window */
+    }
+}
+
+/* ================================================================ */
+
 void RobotTask_Init(void)
 {
     ctx.current_state = MISSION_IDLE;
@@ -63,14 +121,6 @@ Direction_t Get_Most_Frequent_Direction(Direction_t *buf, uint8_t size)
     return (Direction_t)(max_idx - 1);
 }
 
-/**
- * @brief  原地扫视搜索黑线状态机
- * @note   由 RobotTask_Update 在 MISSION_FAULT_LOST_LINE 状态下调用
- */
-void Execute_Line_Search_Sequence(void)
-{
-}
-
 void RobotTask_Start(void)
 {
     is_deciding = false;
@@ -79,6 +129,9 @@ void RobotTask_Start(void)
     ctx.current_state = MISSION_RUNNING;
     ctx.last_passed_marker = MARKER_START;
     Control_SetLineError(CRUISE_SPEED, 0.0f);
+
+    /* Kick off 5 s radar pre-scan */
+    PreScan_Start();
 }
 
 /**
@@ -131,8 +184,8 @@ void RobotTask_TriggerTask3(void)
     is_executing_junction = false;
     buffer_idx = 0;
 
-    /* 4. Start radar scanning */
-    Radar_Start();
+    /* 4. Kick off 5 s radar pre-scan (replaces plain Radar_Start) */
+    PreScan_Start();
 
     /* 5. Ensure we are in running state */
     if (ctx.current_state == MISSION_IDLE || ctx.current_state == MISSION_FAULT_LOST_LINE)
@@ -146,6 +199,8 @@ static uint8_t line_stable_count = 0;
 
 void RobotTask_Update(GraySensor_Data_t *gray)
 {
+    /* Tick the pre-scan state machine (5 s radar sampling) */
+    PreScan_Update();
 
     // ---------------------------------------------------------
     // MARKER TRACKING: Update Last Checkpoint
@@ -272,7 +327,16 @@ void RobotTask_Update(GraySensor_Data_t *gray)
 
                 if (is_in_task3_zone && !ctx.task3_radar_done)
                 {
-                    decision_buffer[buffer_idx++] = Radar_GetAvoidanceDirection();
+                    /* Pre-scan path: use remembered direction, still go
+                       through the full deciding window for timing */
+                    if (ctx.pre_scan_valid)
+                    {
+                        decision_buffer[buffer_idx++] = ctx.pre_scan_dir;
+                    }
+                    else
+                    {
+                        decision_buffer[buffer_idx++] = Radar_GetAvoidanceDirection();
+                    }
                     current_decide_speed = 0.0f;
                 }
                 else
