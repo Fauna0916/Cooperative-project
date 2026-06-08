@@ -11,9 +11,9 @@
 Robot_Context_t ctx;
 
 // Speeds for different track sections
-#define CRUISE_SPEED 0.25f   // m/s for straights and wavy lines
-#define BOX_ENTRY_SPEED 0.2f // m/s when approaching 90-deg corners
-#define TURN_SPEED 0.1f      // 0.0 means pivot-in-place for IMU turns
+#define CRUISE_SPEED 0.30f    // m/s for straights and wavy lines
+#define BOX_ENTRY_SPEED 0.22f // m/s when approaching 90-deg corners
+#define TURN_SPEED 0.21f      // 0.0 means pivot-in-place for IMU turns
 
 #define SEARCH_ANGLE (0.6f) // about 35 degree
 
@@ -35,7 +35,7 @@ static Direction_t chosen_direction = Direction_NORMAL;
  * window to keep timing consistent.
  * ================================================================ */
 
-#define PRE_SCAN_DURATION_MS 1000U
+#define PRE_SCAN_DURATION_MS 500U
 
 static uint32_t pre_scan_start_tick = 0;
 static bool pre_scan_active = false;

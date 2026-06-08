@@ -8,14 +8,15 @@ static bool is_lora_busy = false;
 static uint32_t last_trigger_tick = 0;
 
 /* --- Arch detection edge-trigger state --- */
-static bool arch_last_level = false;    /* previous debounced level */
-static bool arch_armed = true;         /* ready to fire on next rising edge */
+static bool arch_last_level = false; /* previous debounced level */
+static bool arch_armed = true;       /* ready to fire on next rising edge */
 
 void LoRa_Init(void)
 {
     is_lora_busy = false;
     arch_last_level = false;
     arch_armed = true;
+    // DS3231_SetTime(0, 0, 8, 10, 39, 30);
 }
 
 /**

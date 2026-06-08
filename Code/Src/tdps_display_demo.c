@@ -166,17 +166,17 @@ static void disp_draw_line_dynamic(const GraySensor_Data_t *gray,
     }
     ST7735_WriteString(30, 82, flag_str, flag_color, ST7735_BLACK, 1);
 
-    /* ---- Marker (from odometry distance) ---- */
-    sprintf(buf, "Mkr: --");
-    ST7735_WriteString(48, 104, buf, ST7735_WHITE, ST7735_BLACK, 1);
+    // /* ---- Marker (from odometry distance) ---- */
+    // sprintf(buf, "Mkr: --");
+    // ST7735_WriteString(48, 104, buf, ST7735_WHITE, ST7735_BLACK, 1);
 
-    /* ---- Distance ---- */
-    sprintf(buf, "Dist: %.2f m", (double)distance);
-    ST7735_WriteString(48, 118, buf, ST7735_WHITE, ST7735_BLACK, 1);
+    // /* ---- Distance ---- */
+    // sprintf(buf, "Dist: %.2f m", (double)distance);
+    // ST7735_WriteString(48, 118, buf, ST7735_WHITE, ST7735_BLACK, 1);
 
-    /* ---- Speed ---- */
-    sprintf(buf, "Spd: %.2f m/s", (double)speed);
-    ST7735_WriteString(48, 132, buf, ST7735_WHITE, ST7735_BLACK, 1);
+    // /* ---- Speed ---- */
+    // sprintf(buf, "Spd: %.2f m/s", (double)speed);
+    // ST7735_WriteString(48, 132, buf, ST7735_WHITE, ST7735_BLACK, 1);
 }
 
 static void disp_update_line_page(void)
